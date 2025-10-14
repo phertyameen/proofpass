@@ -1,7 +1,16 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { EventStatus } from '../enums/eventStatus.enum';
+import { EventDto } from './event.dto';
 
 export class EventListQueryDto {
   @ApiPropertyOptional({
@@ -54,4 +63,40 @@ export class EventListQueryDto {
   @IsString()
   @IsOptional()
   search?: string;
+
+  @ApiProperty({
+    description: 'Filter by active status',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiProperty({
+    description: 'Filter by category',
+    example: 'Workshop',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  category?: string;
+}
+
+export class PaginatedEventsResponseDto {
+  @ApiProperty({ type: [EventDto] })
+  events: EventDto[];
+
+  @ApiProperty({ example: 50 })
+  total: number;
+
+  @ApiProperty({ example: 1 })
+  page: number;
+
+  @ApiProperty({ example: 10 })
+  limit: number;
+
+  @ApiProperty({ example: 5 })
+  totalPages: number;
 }

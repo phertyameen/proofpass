@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
 import { EventDto } from 'src/event/dto/event.dto';
 import { UserDto } from 'src/user/dto/user.dto';
 
@@ -67,12 +68,14 @@ export class AttendanceDto {
     description: 'NFT token ID',
     example: 42,
   })
+  @IsOptional()
   nftTokenId?: number;
 
   @ApiPropertyOptional({
     description: 'NFT image URL',
     example: 'https://nft.proofpass.app/42.png',
   })
+  @IsOptional()
   nftUrl?: string;
 
   @ApiProperty({

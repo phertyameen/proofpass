@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
 
 export class TimeSeriesDto {
   @ApiProperty({ example: '2025-12-01T14:00:00Z' })
@@ -31,5 +32,6 @@ export class EventAnalyticsDto {
     description: 'Additional demographics data',
     example: { newUsers: 10, returningUsers: 35 },
   })
+  @IsOptional()
   demographics?: any;
 }

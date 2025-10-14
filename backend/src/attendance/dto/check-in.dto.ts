@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEthereumAddress } from 'class-validator';
+import { IsString, IsNotEmpty, IsEthereumAddress, IsOptional } from 'class-validator';
 
 export class CheckInDto {
   @ApiProperty({
@@ -24,4 +24,15 @@ export class CheckInDto {
   @IsString()
   @IsNotEmpty()
   transactionHash: string;
+
+  @ApiProperty({
+    description: 'Check-in method',
+    example: 'QR',
+    enum: ['QR', 'Manual', 'API'],
+    required: false,
+    default: 'QR',
+  })
+  @IsOptional()
+  @IsString()
+  checkInMethod?: string;
 }

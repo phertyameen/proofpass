@@ -94,3 +94,6 @@ Paste it into .env as DATABASE_URL.
 Synchronize entities automatically (for dev):
 
 npm run start:dev
+
+## Backend deployed at
+https://proofpass.onrender.com/

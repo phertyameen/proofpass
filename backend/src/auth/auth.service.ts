@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { ethers } from 'ethers';
 import { randomBytes } from 'crypto';
 import { User } from 'src/user/user.entity';
+import { AuthResponseDto } from './dto/auth-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -79,7 +80,7 @@ export class AuthService {
   }
 
   // Generate JWT token
-  async login(walletAddress: string) {
+  async login(walletAddress: string): Promise<AuthResponseDto> {
     const user = await this.userRepository.findOne({
       where: { walletAddress: walletAddress.toLowerCase() },
     });
@@ -101,6 +102,8 @@ export class AuthService {
         walletAddress: user.walletAddress,
         displayName: user.displayName,
         isOrganizer: user.isOrganizer,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       },
     };
   }

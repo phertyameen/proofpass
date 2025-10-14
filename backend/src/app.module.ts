@@ -10,9 +10,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { BlockchainModule } from './blockchain/blockchain.module';
+import { TransactionModule } from './transaction/transaction.module';
 
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
@@ -52,6 +56,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     EventModule,
     AttendanceModule,
     AnalyticsModule,
+    BlockchainModule,
+    TransactionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

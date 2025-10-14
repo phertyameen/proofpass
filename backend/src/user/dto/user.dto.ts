@@ -49,3 +49,23 @@ export class UserDto {
   })
   updatedAt: Date;
 }
+
+export class UserResponseDto {
+  @ApiProperty({ example: 'uuid-1234-5678' })
+  id: string;
+
+  @ApiProperty({ example: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb' })
+  walletAddress: string;
+
+  @ApiProperty({ example: 'John Doe', required: false })
+  displayName?: string;
+
+  @ApiProperty({ example: 'john@example.com', required: false })
+  email?: string;
+
+  @ApiProperty({ example: true })
+  isOrganizer: boolean;
+
+  @ApiProperty({ example: '2025-01-15T10:00:00Z' })
+  createdAt: Date;
+}

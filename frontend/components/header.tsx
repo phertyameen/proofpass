@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import Image from "next/image";
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -14,7 +15,6 @@ export function Header() {
     { name: "Features", href: "/#features" },
     { name: "How It Works", href: "/#how-it-works" },
     { name: "Pricing", href: "/#pricing" },
-    { name: "Events", href: "/events" },
   ];
 
   return (
@@ -23,14 +23,21 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
-            <div className="relative w-10 h-10">
-              <div className="absolute inset-0 gradient-emerald-teal rounded-lg flex items-center justify-center">
-                <span className="text-white text-xl font-bold">✓</span>
-              </div>
-            </div>
-            <span className="text-xl font-bold text-gradient-emerald-teal">
-              ProofPass
-            </span>
+            <Image
+              src={"/icon.png"}
+              alt="proofpass logo icon"
+              width={100}
+              height={100}
+              className="w-10 h-10 md:hidden"
+            />
+            <Image
+              src={"/logo.png"}
+              alt="proofpass logo"
+              width={100}
+              height={100}
+              priority
+              className="w-full hidden md:block"
+            />
           </Link>
 
           {/* Desktop Navigation */}

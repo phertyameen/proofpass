@@ -19,7 +19,9 @@ export const metadata: Metadata = {
   title: "ProofPass - Where Proof Meets Profit",
   description:
     "Blockchain-powered event attendance verification. Transform your events with verifiable attendance, seamless check-ins, and powerful analytics.",
-  generator: "v0.app",
+  icons:{
+    icon: "/icon.png"
+  }
 };
 
 export default function RootLayout({

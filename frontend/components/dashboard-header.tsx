@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import Image from "next/image";
 
 export function DashboardHeader({ role }: { role: "organizer" | "attendee" }) {
   const [open, setOpen] = useState(false);
@@ -29,8 +30,16 @@ export function DashboardHeader({ role }: { role: "organizer" | "attendee" }) {
 
   const attendeeNavigation = [
     { name: "Dashboard", href: "/dashboard/attendee", icon: LayoutDashboard },
-    { name: "Discover Events", href: "/events", icon: Search },
-    { name: "My Attendance", href: "/my-attendance", icon: CheckCircle2 },
+    {
+      name: "Discover Events",
+      href: "/dashboard/attendee/events",
+      icon: Search,
+    },
+    {
+      name: "My Attendance",
+      href: "/dashboard/attendee/my-attendance",
+      icon: CheckCircle2,
+    },
   ];
 
   const navigation =
@@ -38,7 +47,7 @@ export function DashboardHeader({ role }: { role: "organizer" | "attendee" }) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link
           href={
@@ -48,14 +57,21 @@ export function DashboardHeader({ role }: { role: "organizer" | "attendee" }) {
           }
           className="flex items-center gap-3"
         >
-          <div className="relative w-10 h-10">
-            <div className="absolute inset-0 gradient-emerald-teal rounded-lg flex items-center justify-center">
-              <span className="text-white text-xl font-bold">✓</span>
-            </div>
-          </div>
-          <span className="text-xl font-bold text-gradient-emerald-teal">
-            ProofPass
-          </span>
+          <Image
+            src={"/icon.png"}
+            alt="proofpass logo icon"
+            width={100}
+            height={100}
+            className="w-10 h-10 md:hidden"
+          />
+          <Image
+            src={"/logo.png"}
+            alt="proofpass logo"
+            width={100}
+            height={100}
+            priority
+            className="w-full hidden md:block"
+          />
         </Link>
 
         {/* Desktop Navigation */}

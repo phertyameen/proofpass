@@ -29,6 +29,7 @@ It powers smart contract interactions, event creation, user verification, and at
 | Blockchain | [Hardhat + Ethers.js](https://hardhat.org) |
 | Hosting | [Render](https://render.com) |
 | Environment Variables | [dotenv](https://www.npmjs.com/package/dotenv) |
+| Custum base sepolia url | [Alchemy](https://dashboard.alchemy.com/apps)
 
 ---
 

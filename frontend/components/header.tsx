@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Image from "next/image";
+import { ConnectWalletButton } from "./connect-wallet-button";
 
 export function Header() {
   const [open, setOpen] = useState(false);

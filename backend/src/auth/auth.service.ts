@@ -19,7 +19,7 @@ export class AuthService {
   ) {}
 
   // Generate random nonce for user
-  async generateNonce(walletAddress: string): Promise<string> {
+  public async generateNonce(walletAddress: string): Promise<string> {
     const nonce = randomBytes(32).toString('hex');
 
     // Find or create user
@@ -41,7 +41,7 @@ export class AuthService {
   }
 
   // Verify wallet signature
-  async verifySignature(
+  public async verifySignature(
     walletAddress: string,
     signature: string,
     nonce: string,
@@ -80,7 +80,9 @@ export class AuthService {
   }
 
   // Generate JWT token
-  async login(walletAddress: string): Promise<AuthResponseDto> {
+  public async login(walletAddress: string): Promise<AuthResponseDto> {
+    console.log('JWT Secret:', this.jwtService['options']?.secret);
+    
     const user = await this.userRepository.findOne({
       where: { walletAddress: walletAddress.toLowerCase() },
     });
@@ -109,7 +111,7 @@ export class AuthService {
   }
 
   // Validate JWT and return user
-  async validateUser(payload: any): Promise<User> {
+  public async validateUser(payload: any): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id: payload.sub },
     });

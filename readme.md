@@ -1,5 +1,7 @@
 # 🎟️ ProofPass — Blockchain-Powered Event Attendance & Revenue Platform
 
+![alt text](image.png)
+
 ## 🌟 Overview
 **ProofPass** is a **blockchain-based event attendance and verification platform** built on **Base**, designed to make check-ins **tamper-proof**, **transparent**, and **profitable**.
 

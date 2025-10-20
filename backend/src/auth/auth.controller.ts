@@ -61,7 +61,7 @@ export class AuthController {
     type: AuthResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Invalid signature or nonce' })
-  async verify(@Body() dto: VerifySignatureDto): Promise<AuthResponseDto> {
+  public async verify(@Body() dto: VerifySignatureDto): Promise<AuthResponseDto> {
     const { walletAddress, signature, nonce } = dto;
 
     // Verify signature
@@ -95,7 +95,7 @@ export class AuthController {
     type: UserResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getCurrentUser(@Request() req: any): Promise<UserResponseDto> {
+  public async getCurrentUser(@Request() req: any): Promise<UserResponseDto> {
     return req.user;
   }
 }

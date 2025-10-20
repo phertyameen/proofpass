@@ -61,14 +61,13 @@ export default function EventDetailView({
   params: { id: string };
 }) {
   const router = useRouter();
-  const event = mockEvents.find((e) => e.id === params.id);
-  const qrCodeRef = useRef<HTMLDivElement>(null);
-
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const event = mockEvents.find((e) => e.id === params.id);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   if (!event) {
     notFound();

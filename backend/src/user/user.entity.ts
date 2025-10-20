@@ -11,6 +11,9 @@ export class User {
   @Index()
   walletAddress: string;
 
+  @Column({ unique: true, nullable: true })
+  fid: string;
+
   @Column({ nullable: true, unique: true })
   email?: string;
 

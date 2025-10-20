@@ -13,6 +13,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { TransactionModule } from './transaction/transaction.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { TransactionModule } from './transaction/transaction.module';
     AnalyticsModule,
     BlockchainModule,
     TransactionModule,
+    JwtModule
   ],
   controllers: [AppController],
   providers: [AppService],

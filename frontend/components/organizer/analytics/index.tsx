@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -12,17 +14,86 @@ import {
   DollarSign,
   ArrowUp,
   ArrowDown,
+  Loader2,
 } from "lucide-react";
 import { mockEvents } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { useEventContract } from "@/lib/hooks/useEventContract";
+import { Button } from "@/components/ui/button";
+
+interface EventWithMetadata {
+  eventId: number;
+  organizer: string;
+  metadataHash: string;
+  createdAt: number;
+  attendanceFee: string;
+  isActive: boolean;
+  maxAttendees: number;
+  currentAttendees: number;
+  title: string;
+  description: string;
+  location: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+}
 
 export default function AnalyticsView() {
-  const totalCheckIns = mockEvents.reduce((sum, e) => sum + e.checkInCount, 0);
-  const totalRevenue = mockEvents.reduce(
-    (sum, e) => sum + Number.parseFloat(e.revenue),
+  const { getAllEventsWithMetadata, isConnected, connectWallet } = useEventContract();
+  const [events, setEvents] = useState<EventWithMetadata[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadEvents();
+  }, [isConnected]);
+
+  const loadEvents = async () => {
+    if (!isConnected) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const eventData = await getAllEventsWithMetadata();
+      setEvents(eventData);
+    } catch (error) {
+      console.error("Error loading events:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalCheckIns = events.reduce((sum, e) => sum + e.currentAttendees, 0);
+  const totalRevenue = events.reduce(
+    (sum, e) => sum + Number(e.attendanceFee) * e.currentAttendees,
     0
   );
   const avgAttendance =
-    mockEvents.length > 0 ? Math.round(totalCheckIns / mockEvents.length) : 0;
+    events.length > 0 ? Math.round(totalCheckIns / events.length) : 0;
+
+  if (!isConnected) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <p className="text-muted-foreground">Connect your wallet to view analytics</p>
+        <Button
+          onClick={connectWallet}
+          className="gradient-emerald-teal text-white hover:opacity-90"
+        >
+          Connect Wallet
+        </Button>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

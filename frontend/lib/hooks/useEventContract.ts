@@ -1,0 +1,301 @@
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import EventRegistryABI from "@/lib/api/EventRegistryABI.json";
+
+const CONTRACT_ADDRESS =
+  process.env.EVENT_REGISTRY_ADDRESS ||
+  "0x716c9b4973a08Cb6340C048e52fdbA6893F2DA25";
+
+// if (!CONTRACT_ADDRESS) {
+//     throw new Error('contract address not found')
+// }
+
+export interface EventData {
+  eventId: number;
+  organizer: string;
+  metadataHash: string;
+  createdAt: number;
+  attendanceFee: string;
+  isActive: boolean;
+  maxAttendees: number;
+  currentAttendees: number;
+}
+
+export interface EventMetadata {
+  title: string;
+  description: string;
+  location: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export const useEventContract = () => {
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [account, setAccount] = useState<string>("");
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Initialize provider and contract
+  useEffect(() => {
+    const init = async () => {
+      if (typeof window !== "undefined" && window.ethereum) {
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        setProvider(web3Provider);
+
+        try {
+          const accounts = await web3Provider.listAccounts();
+          if (accounts.length > 0) {
+            const web3Signer = await web3Provider.getSigner();
+            setSigner(web3Signer);
+            setAccount(accounts[0].address);
+            setIsConnected(true);
+
+            const eventContract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              EventRegistryABI.abi,
+              web3Signer
+            );
+            console.log('Contract initialized at:', eventContract.target);
+            setContract(eventContract);
+          }
+        } catch (error) {
+          console.error("Error initializing:", error);
+        }
+      }
+    };
+
+    init();
+
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          init();
+        } else {
+          setIsConnected(false);
+          setAccount("");
+        }
+      });
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners("accountsChanged");
+      }
+    };
+  }, []);
+
+  // Connect wallet
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      throw new Error("MetaMask is not installed");
+    }
+
+    try {
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      await web3Provider.send("eth_requestAccounts", []);
+      const web3Signer = await web3Provider.getSigner();
+      const address = await web3Signer.getAddress();
+
+      setProvider(web3Provider);
+      setSigner(web3Signer);
+      setAccount(address);
+      setIsConnected(true);
+
+      const eventContract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        EventRegistryABI.abi,
+        web3Signer
+      );
+      setContract(eventContract);
+
+      return address;
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      throw error;
+    }
+  };
+
+  // Upload metadata to IPFS (you'll need to implement your IPFS upload)
+  const uploadToIPFS = async (metadata: EventMetadata): Promise<string> => {
+    const mockHash = `QmTest${Date.now()}${Math.random()
+      .toString(36)
+      .substring(2, 9)}`;
+    console.log("Mock IPFS hash:", mockHash);
+    return mockHash;
+
+    //     const response = await fetch('/api/ipfs/upload', {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json' },
+    //       body: JSON.stringify(metadata),
+    //     });
+    //     const data = await response.json();
+    //     return data.hash;
+  };
+
+  // Create event
+  const createEvent = async (
+    metadata: EventMetadata,
+    attendanceFee: string,
+    maxAttendees: number
+  ) => {
+    if (!contract || !signer) throw new Error("Contract not initialized");
+
+    try {
+      // Upload metadata to IPFS
+      const metadataHash = await uploadToIPFS(metadata);
+
+      // Get creation fee
+      const creationFee = await contract.eventCreationFee();
+
+      // Convert attendance fee to wei
+      const attendanceFeeWei = ethers.parseEther(attendanceFee);
+
+      // Create event
+      const tx = await contract.createEvent(
+        metadataHash,
+        attendanceFeeWei,
+        maxAttendees,
+        { value: creationFee }
+      );
+
+      const receipt = await tx.wait();
+
+      // Extract event ID from logs
+      const eventCreatedLog = receipt.logs.find(
+        (log: any) => log.fragment?.name === "EventCreated"
+      );
+      const eventId = eventCreatedLog?.args?.[0];
+
+      return { eventId: eventId, txHash: receipt.hash };
+    } catch (error) {
+      console.error("Error creating event:", error);
+      throw error;
+    }
+  };
+
+  // Get event details
+  const getEvent = async (eventId: string): Promise<EventData> => {
+    if (!contract) throw new Error("Contract not initialized");
+
+    try {
+      const event = (await contract.getEvent(eventId)) as any;
+      return {
+        eventId: event.eventId,
+        organizer: event.organizer,
+        metadataHash: event.metadataHash,
+        createdAt: event.createdAt,
+        attendanceFee: ethers.formatEther(event.attendanceFee),
+        isActive: event.isActive,
+        maxAttendees: Number(event.maxAttendees),
+        currentAttendees: Number(event.currentAttendees),
+      };
+    } catch (error) {
+      console.error("Error getting event:", error);
+      throw error;
+    }
+  };
+
+  // Get metadata from IPFS
+  const getMetadata = async (metadataHash: string): Promise<EventMetadata> => {
+    // TODO: Replace with actual IPFS fetch
+    const response = await fetch(`/api/ipfs/get?hash=${metadataHash}`);
+    const data = await response.json();
+    return data;
+  };
+
+  // Get organizer events
+  const getOrganizerEvents = async (organizer: string): Promise<string[]> => {
+    if (!contract) throw new Error("Contract not initialized");
+
+    try {
+      const eventIds = await contract.getOrganizerEvents(organizer);
+      console.log('Raw eventIds from contract:', eventIds);
+      return eventIds.map((id: bigint) => Number(id));
+    } catch (error) {
+      console.error("Error getting organizer events:", error);
+      throw error;
+    }
+  };
+
+  // Toggle event status
+  const toggleEventStatus = async (eventId: number) => {
+    if (!contract) throw new Error("Contract not initialized");
+
+    try {
+      const tx = await contract.toggleEventStatus(eventId);
+      const receipt = await tx.wait();
+      return receipt.hash;
+    } catch (error) {
+      console.error("Error toggling event status:", error);
+      throw error;
+    }
+  };
+
+  // Get all events with metadata
+ const getAllEventsWithMetadata = async () => {
+    if (!contract || !account) {
+      console.error('Contract or account not available');
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      console.log('Fetching events for account:', account);
+      const eventIds = await getOrganizerEvents(account);
+      console.log('Event IDs:', eventIds);
+
+      if (eventIds.length === 0) {
+        console.log('No events found for this organizer');
+        return [];
+      }
+
+      const events = await Promise.all(
+        eventIds.map(async (id) => {
+          try {
+            console.log('Fetching event:', id);
+            const eventData = await getEvent(id);
+            console.log('Event data:', eventData);
+            
+            const metadata = await getMetadata(eventData.metadataHash);
+            console.log('Metadata:', metadata);
+            
+            return { ...eventData, ...metadata };
+          } catch (err) {
+            console.error(`Error fetching event ${id}:`, err);
+            return null;
+          }
+        })
+      );
+
+      // Filter out any null events that failed to load
+      const validEvents = events.filter((e) => e !== null);
+      console.log('Valid events:', validEvents);
+      
+      return validEvents;
+    } catch (error) {
+      console.error('Error getting all events:', error);
+      throw error;
+    }
+  };
+
+  return {
+    provider,
+    signer,
+    contract,
+    account,
+    isConnected,
+    connectWallet,
+    createEvent,
+    getEvent,
+    getMetadata,
+    getOrganizerEvents,
+    toggleEventStatus,
+    getAllEventsWithMetadata,
+  };
+};

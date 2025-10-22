@@ -53,7 +53,7 @@ export default function EventsView() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {mockEvents.map((event) => (
           <Link key={event.id} href={`/dashboard/organizer/events/${event.id}`}>
-            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer h-full">
+            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer h-full pt-0">
               <div className="aspect-video w-full bg-gradient-to-br from-primary to-secondary rounded-t-lg flex items-center justify-center text-white text-4xl font-bold">
                 {event.title.charAt(0)}
               </div>

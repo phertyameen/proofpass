@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -132,14 +133,23 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 gradient-emerald-teal rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-bold">✓</span>
-            </div>
-            <span className="font-semibold text-gradient-emerald-teal">
-              ProofPass
-            </span>
-          </div>
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src={"/icon.png"}
+              alt="proofpass logo icon"
+              width={100}
+              height={100}
+              className="w-10 h-10 md:hidden"
+            />
+            <Image
+              src={"/logo.png"}
+              alt="proofpass logo"
+              width={100}
+              height={100}
+              priority
+              className="w-full hidden md:block"
+            />
+          </Link>
 
           <p className="text-sm text-muted-foreground">
             © 2025 ProofPass. Built on Base. Where Proof Meets Profit.

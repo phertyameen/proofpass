@@ -41,6 +41,7 @@ import dynamic from "next/dynamic";
 import { useEventContract } from "@/lib/hooks/useEventContract";
 import { toast } from "sonner";
 import QRCodeStyling from "qr-code-styling";
+import QRCode from "@/components/qrCode";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
@@ -94,8 +95,7 @@ export default function EventDetailView({
   const [linkCopied, setLinkCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
-  const qrCodeRef = useRef<HTMLDivElement>(null);
-  const qrCode = useRef<QRCodeStyling | null>(null);
+  const [checkInUrl, setCheckInUrl] = useState<string>("");
 
   // Load event data
   useEffect(() => {
@@ -105,25 +105,33 @@ export default function EventDetailView({
   }, [isConnected, params.id]);
 
   // Initialize QR Code
+  //   useEffect(() => {
+  //     if (typeof window === "undefined") return;
+  //     if (!event?.eventId || !qrCodeRef.current) return;
+
+  //     const checkInUrl = `${window.location.origin}/dasboard/organizer/events/${event.eventId}`;
+
+  //     if (!qrCode.current) {
+  //       qrCode.current = new QRCodeStyling({
+  //         width: 256,
+  //         height: 256,
+  //         data: checkInUrl,
+  //         dotsOptions: { color: "#10b981", type: "rounded" },
+  //         backgroundOptions: { color: "#ffffff" },
+  //         cornersSquareOptions: { type: "extra-rounded" },
+  //         cornersDotOptions: { type: "dot" },
+  //       });
+  //       qrCode.current.append(qrCodeRef.current);
+  //     } else {
+  //       qrCode.current.update({ data: checkInUrl });
+  //     }
+  //   }, [event?.eventId]);
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!event?.eventId || !qrCodeRef.current) return;
-
-    const checkInUrl = `${window.location.origin}/check-in/${event.eventId}`;
-
-    if (!qrCode.current) {
-      qrCode.current = new QRCodeStyling({
-        width: 256,
-        height: 256,
-        data: checkInUrl,
-        dotsOptions: { color: "#10b981", type: "rounded" },
-        backgroundOptions: { color: "#ffffff" },
-        cornersSquareOptions: { type: "extra-rounded" },
-        cornersDotOptions: { type: "dot" },
-      });
-      qrCode.current.append(qrCodeRef.current);
-    } else {
-      qrCode.current.update({ data: checkInUrl });
+    if (typeof window !== "undefined" && event?.eventId) {
+      // This URL should point to the attendee check-in page, not organizer dashboard
+      const url = `${window.location.origin}/dashboard/attendee/check-in/${event.eventId}`;
+      setCheckInUrl(url);
     }
   }, [event?.eventId]);
 
@@ -205,17 +213,21 @@ export default function EventDetailView({
   };
 
   const handleDownloadQR = () => {
-    if (qrCode.current) {
-      qrCode.current.download({
-        name: `${event?.title.replace(/\s+/g, "-")}-qr-code`,
-        extension: "png",
-      });
-    }
+    if (!checkInUrl) return;
+
+    // Create a temporary canvas to capture the QR code
+    const qrElement = document.querySelector("[data-qr-code]");
+    if (!qrElement) return;
+
+    // Use html2canvas or similar library in production
+    // For now, just show a toast
+    toast.info("QR Code download - implement with html2canvas or similar");
   };
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/check-in/${event?.eventId}`;
-    navigator.clipboard.writeText(link);
+    if (!checkInUrl || !event) return;
+
+    navigator.clipboard.writeText(checkInUrl);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
     toast.success("Link copied to clipboard!");
@@ -256,12 +268,10 @@ export default function EventDetailView({
   return (
     <div className="space-y-8">
       {/* Back Button */}
-      <Link href="/dashboard/organizer/events">
-        <Button variant="ghost" size="sm">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Events
-        </Button>
-      </Link>
+      <Button variant="ghost" size="sm" onClick={() => router.back()}>
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Events
+      </Button>
 
       {/* Event Header */}
       <div className="flex items-start justify-between">
@@ -552,19 +562,32 @@ export default function EventDetailView({
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
-              <div
-                ref={qrCodeRef}
-                className="p-4 bg-white rounded-lg border-4 border-primary shadow-lg"
-              />
+              {checkInUrl ? (
+                <div
+                  data-qr-code
+                  className="p-4 bg-white rounded-lg border-4 border-primary shadow-lg"
+                >
+                  <QRCode data={checkInUrl} width={256} />
+                </div>
+              ) : (
+                <div className="w-64 h-64 flex items-center justify-center text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                </div>
+              )}
               <div className="flex gap-3">
                 <Button
                   className="gradient-emerald-teal text-white hover:opacity-90"
                   onClick={handleDownloadQR}
+                  disabled={!checkInUrl}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download QR Code
                 </Button>
-                <Button variant="outline" onClick={handleCopyLink}>
+                <Button
+                  variant="outline"
+                  onClick={handleCopyLink}
+                  disabled={!checkInUrl}
+                >
                   {linkCopied ? (
                     <Check className="w-4 h-4 mr-2" />
                   ) : (
@@ -576,7 +599,7 @@ export default function EventDetailView({
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">Check-in URL</p>
                 <p className="font-mono text-sm mt-1 break-all px-4">
-                  {window.location.origin}/check-in/{event.eventId}
+                  {checkInUrl}
                 </p>
               </div>
             </CardContent>
@@ -629,10 +652,10 @@ export default function EventDetailView({
                 <input
                   type="text"
                   readOnly
-                  value={`${window.location.origin}/check-in/${event.eventId}`}
+                  value={checkInUrl || "Loading..."}
                   className="flex-1 px-3 py-2 border rounded-md text-sm"
                 />
-                <Button onClick={handleCopyLink}>
+                <Button onClick={handleCopyLink} disabled={!checkInUrl}>
                   {linkCopied ? (
                     <Check className="w-4 h-4" />
                   ) : (

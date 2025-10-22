@@ -24,7 +24,7 @@ import { useEffect, useState } from "react";
 import { useEventContract } from "@/lib/hooks/useEventContract";
 
 interface EventWithMetadata {
-  eventId: number;
+  eventId: string;
   organizer: string;
   metadataHash: string;
   createdAt: number;

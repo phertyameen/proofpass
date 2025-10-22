@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import EventRegistryABI from "@/lib/api/EventRegistryABI.json";
+import { string } from "zod";
 
 const CONTRACT_ADDRESS =
   process.env.EVENT_REGISTRY_ADDRESS ||
@@ -11,7 +12,7 @@ const CONTRACT_ADDRESS =
 // }
 
 export interface EventData {
-  eventId: number;
+  eventId: string;
   organizer: string;
   metadataHash: string;
   createdAt: number;
@@ -60,7 +61,7 @@ export const useEventContract = () => {
               EventRegistryABI.abi,
               web3Signer
             );
-            console.log('Contract initialized at:', eventContract.target);
+            console.log("Contract initialized at:", eventContract.target);
             setContract(eventContract);
           }
         } catch (error) {
@@ -185,16 +186,19 @@ export const useEventContract = () => {
     if (!contract) throw new Error("Contract not initialized");
 
     try {
-      const event = (await contract.getEvent(eventId)) as any;
+      // Use getFunction with staticCall
+      const result = await contract.getFunction("getEvent").staticCall(eventId);
+
+      console.log(result);
       return {
-        eventId: event.eventId,
-        organizer: event.organizer,
-        metadataHash: event.metadataHash,
-        createdAt: event.createdAt,
-        attendanceFee: ethers.formatEther(event.attendanceFee),
-        isActive: event.isActive,
-        maxAttendees: Number(event.maxAttendees),
-        currentAttendees: Number(event.currentAttendees),
+        eventId: result.eventId.toString(),
+        organizer: result.organizer,
+        metadataHash: result.metadataHash,
+        createdAt: Number(result.createdAt),
+        attendanceFee: ethers.formatEther(result.attendanceFee),
+        isActive: result.isActive,
+        maxAttendees: Number(result.maxAttendees),
+        currentAttendees: Number(result.currentAttendees),
       };
     } catch (error) {
       console.error("Error getting event:", error);
@@ -203,11 +207,42 @@ export const useEventContract = () => {
   };
 
   // Get metadata from IPFS
+  // Get metadata from IPFS
   const getMetadata = async (metadataHash: string): Promise<EventMetadata> => {
-    // TODO: Replace with actual IPFS fetch
-    const response = await fetch(`/api/ipfs/get?hash=${metadataHash}`);
-    const data = await response.json();
-    return data;
+    try {
+      const response = await fetch(`/api/ipfs/get?hash=${metadataHash}`);
+
+      if (!response.ok) {
+        console.warn(
+          `Failed to fetch metadata for ${metadataHash}, using fallback`
+        );
+        // Return fallback data
+        return {
+          title: `Event ${metadataHash.slice(-8)}`,
+          description: "Metadata not available",
+          location: "Location not available",
+          startDate: new Date().toISOString().split("T")[0],
+          startTime: "00:00",
+          endDate: new Date().toISOString().split("T")[0],
+          endTime: "23:59",
+        };
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`Error fetching metadata for ${metadataHash}:`, error);
+      // Return fallback data
+      return {
+        title: `Event ${metadataHash.slice(-8)}`,
+        description: "Metadata not available",
+        location: "Location not available",
+        startDate: new Date().toISOString().split("T")[0],
+        startTime: "00:00",
+        endDate: new Date().toISOString().split("T")[0],
+        endTime: "23:59",
+      };
+    }
   };
 
   // Get organizer events
@@ -216,8 +251,8 @@ export const useEventContract = () => {
 
     try {
       const eventIds = await contract.getOrganizerEvents(organizer);
-      console.log('Raw eventIds from contract:', eventIds);
-      return eventIds.map((id: bigint) => Number(id));
+      console.log("Raw eventIds from contract:", eventIds);
+      return eventIds.map((id: bigint) => id.toString());
     } catch (error) {
       console.error("Error getting organizer events:", error);
       throw error;
@@ -225,7 +260,7 @@ export const useEventContract = () => {
   };
 
   // Toggle event status
-  const toggleEventStatus = async (eventId: number) => {
+  const toggleEventStatus = async (eventId: string) => {
     if (!contract) throw new Error("Contract not initialized");
 
     try {
@@ -239,32 +274,32 @@ export const useEventContract = () => {
   };
 
   // Get all events with metadata
- const getAllEventsWithMetadata = async () => {
+  const getAllEventsWithMetadata = async () => {
     if (!contract || !account) {
-      console.error('Contract or account not available');
-      throw new Error('Contract not initialized');
+      console.error("Contract or account not available");
+      throw new Error("Contract not initialized");
     }
 
     try {
-      console.log('Fetching events for account:', account);
+      console.log("Fetching events for account:", account);
       const eventIds = await getOrganizerEvents(account);
-      console.log('Event IDs:', eventIds);
+      console.log("Event IDs:", eventIds);
 
       if (eventIds.length === 0) {
-        console.log('No events found for this organizer');
+        console.log("No events found for this organizer");
         return [];
       }
 
       const events = await Promise.all(
         eventIds.map(async (id) => {
           try {
-            console.log('Fetching event:', id);
+            console.log("Fetching event:", id);
             const eventData = await getEvent(id);
-            console.log('Event data:', eventData);
-            
+            console.log("Event data:", eventData);
+
             const metadata = await getMetadata(eventData.metadataHash);
-            console.log('Metadata:', metadata);
-            
+            console.log("Metadata:", metadata);
+
             return { ...eventData, ...metadata };
           } catch (err) {
             console.error(`Error fetching event ${id}:`, err);
@@ -275,11 +310,11 @@ export const useEventContract = () => {
 
       // Filter out any null events that failed to load
       const validEvents = events.filter((e) => e !== null);
-      console.log('Valid events:', validEvents);
-      
+      console.log("Valid events:", validEvents);
+
       return validEvents;
     } catch (error) {
-      console.error('Error getting all events:', error);
+      console.error("Error getting all events:", error);
       throw error;
     }
   };

@@ -1,5 +1,5 @@
 export async function GET() {
-  const URL: any = process.env.NEXT_PUBLIC_URL;
+  const URL: any = process.env.NEXT_PUBLIC_URL || "https://proofpass-pi.vercel.app/";
 
   const manifest = {
     accountAssociation: {

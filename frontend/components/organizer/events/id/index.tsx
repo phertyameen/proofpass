@@ -32,16 +32,15 @@ import {
   Trash2,
   Copy,
   Check,
-  Loader2,
-  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import { mockEvents } from "@/lib/mock-data";
 import { notFound, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useEventContract } from "@/lib/hooks/useEventContract";
-import { toast } from "sonner";
+import { ExternalLink } from "lucide-react";
 import QRCodeStyling from "qr-code-styling";
+import { toast } from "sonner";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
@@ -59,58 +58,31 @@ const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
   ssr: false,
 });
 
-interface EventWithMetadata {
-  eventId: string;
-  organizer: string;
-  metadataHash: string;
-  createdAt: number;
-  attendanceFee: string;
-  isActive: boolean;
-  maxAttendees: number;
-  currentAttendees: number;
-  title: string;
-  description: string;
-  location: string;
-  startDate: string;
-  startTime: string;
-  endDate: string;
-  endTime: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-export default function EventDetailView({
+export default function EventDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
   const router = useRouter();
-  const { getEvent, getMetadata, toggleEventStatus, isConnected } =
-    useEventContract();
-  const [event, setEvent] = useState<EventWithMetadata | null>(null);
-  const [loading, setLoading] = useState(true);
+  const event = mockEvents.find((e) => e.id === params.id);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
+  const qrCode = useRef<QRCodeStyling | null>(null);
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
-  const qrCodeRef = useRef<HTMLDivElement>(null);
-  const qrCode = useRef<QRCodeStyling | null>(null);
 
-  // Load event data
-  useEffect(() => {
-    if (isConnected) {
-      loadEventData();
-    }
-  }, [isConnected, params.id]);
+  if (!event) {
+    notFound();
+  }
 
-  // Initialize QR Code
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!event?.eventId || !qrCodeRef.current) return;
+    if (!qrCodeRef.current) return;
 
-    const checkInUrl = `${window.location.origin}/check-in/${event.eventId}`;
+    const checkInUrl = `${window.location.origin}/check-in/${event.id}`;
 
     if (!qrCode.current) {
       qrCode.current = new QRCodeStyling({
@@ -126,44 +98,19 @@ export default function EventDetailView({
     } else {
       qrCode.current.update({ data: checkInUrl });
     }
-  }, [event?.eventId]);
+  }, [event.id]);
 
-  const loadEventData = async () => {
-    try {
-      setLoading(true);
-      const eventData = await getEvent(params.id);
-      const metadata = await getMetadata(eventData.metadataHash);
-      setEvent({ ...eventData, ...metadata });
-    } catch (error) {
-      console.error("Error loading event:", error);
-      toast.error("Failed to load event data");
-      notFound();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggleStatus = async () => {
-    if (!event) return;
-
-    try {
-      setIsTogglingStatus(true);
-      await toggleEventStatus(event.eventId);
-      toast.success(
-        `Event ${event.isActive ? "deactivated" : "activated"} successfully`
-      );
-      await loadEventData(); // Reload to get updated status
-    } catch (error) {
-      console.error("Error toggling status:", error);
-      toast.error("Failed to toggle event status");
-    } finally {
-      setIsTogglingStatus(false);
-    }
-  };
+  // Mock attendee data
+  const attendees = Array.from({ length: event.checkInCount }, (_, i) => ({
+    address: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random()
+      .toString(16)
+      .slice(2, 6)}`,
+    checkedInAt: new Date(event.startTime.getTime() + Math.random() * 3600000),
+    transactionHash: `0x${Math.random().toString(16).slice(2, 66)}`,
+  }));
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    // TODO: Implement actual delete functionality
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setDeleteDialogOpen(false);
     toast.success("Event deleted successfully");
@@ -171,20 +118,6 @@ export default function EventDetailView({
   };
 
   const handleExportAttendees = () => {
-    if (!event) return;
-
-    // Mock attendees - in production, fetch from blockchain
-    const attendees = Array.from(
-      { length: event.currentAttendees },
-      (_, i) => ({
-        address: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random()
-          .toString(16)
-          .slice(2, 6)}`,
-        checkedInAt: new Date(Date.now() - Math.random() * 3600000),
-        transactionHash: `0x${Math.random().toString(16).slice(2, 66)}`,
-      })
-    );
-
     const csvContent = [
       ["Address", "Checked In At", "Transaction Hash"],
       ...attendees.map((a) => [
@@ -203,100 +136,55 @@ export default function EventDetailView({
     a.download = `${event.title.replace(/\s+/g, "-")}-attendees.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+    toast.success("Attendees exported successfully");
   };
 
   const handleDownloadQR = () => {
     if (qrCode.current) {
       qrCode.current.download({
-        name: `${event?.title.replace(/\s+/g, "-")}-qr-code`,
+        name: `${event.title.replace(/\s+/g, "-")}-qr-code`,
         extension: "png",
       });
+      toast.success("QR code downloaded successfully");
     }
   };
 
   const handleCopyLink = () => {
-    const link = `${window.location.origin}/check-in/${event?.eventId}`;
+    const link = `${window.location.origin}/check-in/${event.id}`;
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
     toast.success("Link copied to clipboard!");
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading event details...</p>
-      </div>
-    );
-  }
-
-  if (!event) {
-    notFound();
-  }
-
-  // Calculate revenue
-  const revenue = (
-    Number(event.attendanceFee) * event.currentAttendees
-  ).toFixed(4);
-
-  // Parse dates
-  const startDateTime = new Date(`${event.startDate}T${event.startTime}`);
-  const endDateTime = new Date(`${event.endDate}T${event.endTime}`);
-  const isPastEvent = endDateTime < new Date();
-
-  // Mock attendees for display
-  const attendees = Array.from({ length: event.currentAttendees }, (_, i) => ({
-    address: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random()
-      .toString(16)
-      .slice(2, 6)}`,
-    checkedInAt: new Date(startDateTime.getTime() + Math.random() * 3600000),
-    transactionHash: `0x${Math.random().toString(16).slice(2, 66)}`,
-  }));
-
   return (
     <div className="space-y-8">
       {/* Back Button */}
-      <Link href="/dashboard/organizer/events">
-        <Button variant="ghost" size="sm">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Events
-        </Button>
-      </Link>
+      <Button variant="ghost" size="sm" onClick={() => router.back()}>
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Events
+      </Button>
 
       {/* Event Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-4xl font-bold text-balance">{event.title}</h1>
-            <Badge
-              variant={event.isActive && !isPastEvent ? "default" : "secondary"}
-              className="cursor-pointer"
-              onClick={handleToggleStatus}
-            >
-              {isTogglingStatus ? (
-                <Loader2 className="w-3 h-3 animate-spin mr-1" />
-              ) : null}
-              {isPastEvent ? "Past" : event.isActive ? "Active" : "Inactive"}
+            <Badge variant={event.isActive ? "default" : "secondary"}>
+              {event.isActive ? "Active" : "Inactive"}
             </Badge>
           </div>
           <p className="text-muted-foreground">{event.description}</p>
-          <p className="text-xs text-muted-foreground">
-            Event ID: {event.eventId} | Created:{" "}
-            {new Date(event.createdAt * 1000).toLocaleDateString()}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
-            onClick={handleToggleStatus}
-            disabled={isTogglingStatus || isPastEvent}
+            size="icon"
+            onClick={() =>
+              router.push(`/dashboard/organizer/events/${event.id}/edit`)
+            }
           >
-            {isTogglingStatus ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
-            {event.isActive ? "Deactivate" : "Activate"}
+            <Edit className="w-4 h-4" />
           </Button>
           <Button
             variant="outline"
@@ -323,7 +211,7 @@ export default function EventDetailView({
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{event.currentAttendees}</div>
+            <div className="text-2xl font-bold">{event.checkInCount}</div>
             <p className="text-xs text-muted-foreground">
               of {event.maxAttendees} capacity
             </p>
@@ -336,7 +224,7 @@ export default function EventDetailView({
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{revenue} ETH</div>
+            <div className="text-2xl font-bold">{event.revenue} ETH</div>
             <p className="text-xs text-muted-foreground">
               {event.attendanceFee} ETH per attendee
             </p>
@@ -350,13 +238,13 @@ export default function EventDetailView({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {startDateTime.toLocaleDateString("en-US", {
+              {event.startTime.toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
               })}
             </div>
             <p className="text-xs text-muted-foreground">
-              {startDateTime.toLocaleTimeString("en-US", {
+              {event.startTime.toLocaleTimeString("en-US", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -365,16 +253,8 @@ export default function EventDetailView({
         </Card>
 
         <Card
-          className={`${
-            event.latitude && event.longitude
-              ? "cursor-pointer hover:shadow-lg"
-              : ""
-          } transition-shadow`}
-          onClick={() => {
-            if (event.latitude && event.longitude) {
-              setMapDialogOpen(true);
-            }
-          }}
+          className="cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={() => setMapDialogOpen(true)}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Location</CardTitle>
@@ -382,9 +262,7 @@ export default function EventDetailView({
           </CardHeader>
           <CardContent>
             <div className="text-sm font-bold">{event.location}</div>
-            {event.latitude && event.longitude && (
-              <p className="text-xs text-primary">Click to view on map</p>
-            )}
+            <p className="text-xs text-primary">Click to view on map</p>
           </CardContent>
         </Card>
       </div>
@@ -393,9 +271,7 @@ export default function EventDetailView({
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="attendees">
-            Attendees ({event.currentAttendees})
-          </TabsTrigger>
+          <TabsTrigger value="attendees">Attendees</TabsTrigger>
           <TabsTrigger value="qr-code">QR Code</TabsTrigger>
         </TabsList>
 
@@ -411,7 +287,7 @@ export default function EventDetailView({
                     Start Time
                   </p>
                   <p className="text-lg font-semibold">
-                    {startDateTime.toLocaleString()}
+                    {event.startTime.toLocaleString()}
                   </p>
                 </div>
                 <div>
@@ -419,7 +295,7 @@ export default function EventDetailView({
                     End Time
                   </p>
                   <p className="text-lg font-semibold">
-                    {endDateTime.toLocaleString()}
+                    {event.endTime.toLocaleString()}
                   </p>
                 </div>
                 <div>
@@ -440,14 +316,16 @@ export default function EventDetailView({
                   <p className="text-sm font-medium text-muted-foreground">
                     Organizer
                   </p>
-                  <p className="text-sm font-mono">{event.organizer}</p>
+                  <p className="text-lg font-semibold">
+                    {event.organizerAddress}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Metadata Hash
+                    Created
                   </p>
-                  <p className="text-sm font-mono break-all">
-                    {event.metadataHash}
+                  <p className="text-lg font-semibold">
+                    {event.createdAt.toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -494,7 +372,7 @@ export default function EventDetailView({
                 <div>
                   <CardTitle>Attendee List</CardTitle>
                   <CardDescription>
-                    {event.currentAttendees} attendees checked in
+                    {event.checkInCount} attendees checked in
                   </CardDescription>
                 </div>
                 <Button variant="outline" onClick={handleExportAttendees}>
@@ -504,42 +382,34 @@ export default function EventDetailView({
               </div>
             </CardHeader>
             <CardContent>
-              {event.currentAttendees === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No attendees have checked in yet
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {attendees.map((attendee, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium font-mono">
-                            {attendee.address}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Checked in: {attendee.checkedInAt.toLocaleString()}
-                          </p>
-                        </div>
+              <div className="space-y-2">
+                {attendees.map((attendee, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
+                        {index + 1}
                       </div>
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link
-                          href={`https://etherscan.io/tx/${attendee.transactionHash}`}
-                          target="_blank"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </Link>
-                      </Button>
+                      <div>
+                        <p className="font-medium">{attendee.address}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Checked in: {attendee.checkedInAt.toLocaleString()}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <Button variant="ghost" size="sm">
+                      <Link
+                        href={`https://proofpass.app/check-in/${event.id}`}
+                        target="_blank"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -577,7 +447,9 @@ export default function EventDetailView({
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">Check-in URL</p>
                 <p className="font-mono text-sm mt-1 break-all px-4">
-                  {window.location.origin}/check-in/{event.eventId}
+                  {typeof window !== "undefined"
+                    ? `${window.location.origin}/check-in/${event.id}`
+                    : ""}
                 </p>
               </div>
             </CardContent>
@@ -585,7 +457,6 @@ export default function EventDetailView({
         </TabsContent>
       </Tabs>
 
-      {/* Delete Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -614,7 +485,6 @@ export default function EventDetailView({
         </DialogContent>
       </Dialog>
 
-      {/* Share Dialog */}
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -630,7 +500,9 @@ export default function EventDetailView({
                 <input
                   type="text"
                   readOnly
-                  value={`${window.location.origin}/check-in/${event.eventId}`}
+                  value={`${
+                    typeof window !== "undefined" ? window.location.origin : ""
+                  }/check-in/${event.id}`}
                   className="flex-1 px-3 py-2 border rounded-md text-sm"
                 />
                 <Button onClick={handleCopyLink}>
@@ -647,7 +519,7 @@ export default function EventDetailView({
                 variant="outline"
                 onClick={() =>
                   window.open(
-                    `https://twitter.com/intent/tweet?text=Check out ${event.title}&url=${window.location.origin}/check-in/${event.eventId}`,
+                    `https://twitter.com/intent/tweet?text=Check out ${event.title}&url=${window.location.origin}/check-in/${event.id}`,
                     "_blank"
                   )
                 }
@@ -658,7 +530,7 @@ export default function EventDetailView({
                 variant="outline"
                 onClick={() =>
                   window.open(
-                    `https://www.facebook.com/sharer/sharer.php?u=${window.location.origin}/check-in/${event.eventId}`,
+                    `https://www.facebook.com/sharer/sharer.php?u=${window.location.origin}/check-in/${event.id}`,
                     "_blank"
                   )
                 }
@@ -670,34 +542,31 @@ export default function EventDetailView({
         </DialogContent>
       </Dialog>
 
-      {/* Map Dialog */}
-      {event.latitude && event.longitude && (
-        <Dialog open={mapDialogOpen} onOpenChange={setMapDialogOpen}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Event Location</DialogTitle>
-              <DialogDescription>{event.location}</DialogDescription>
-            </DialogHeader>
-            <div className="h-[400px] rounded-lg overflow-hidden">
-              {typeof window !== "undefined" && (
-                <MapContainer
-                  center={[event.latitude, event.longitude]}
-                  zoom={13}
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <Marker position={[event.latitude, event.longitude]}>
-                    <Popup>{event.title}</Popup>
-                  </Marker>
-                </MapContainer>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={mapDialogOpen} onOpenChange={setMapDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Event Location</DialogTitle>
+            <DialogDescription>{event.location}</DialogDescription>
+          </DialogHeader>
+          <div className="h-[400px] rounded-lg overflow-hidden">
+            {typeof window !== "undefined" && (
+              <MapContainer
+                center={[event.latitude, event.longitude]}
+                zoom={13}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={[event.latitude, event.longitude]}>
+                  <Popup>{event.title}</Popup>
+                </Marker>
+              </MapContainer>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

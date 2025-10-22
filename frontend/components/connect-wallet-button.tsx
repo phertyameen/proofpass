@@ -73,7 +73,7 @@ export function ConnectWalletButton() {
       })
       .catch(() => setIsBaseApp(false));
   }, []);
-  
+
   // Authenticate with browser wallet using wagmi
   const authenticateWithWallet = async (walletAddress: string) => {
     try {
@@ -274,5 +274,83 @@ export function ConnectWalletButton() {
       </Button>
     );
   }
-  return <ConnectButton />;
+  //   <ConnectButton  />;
+  return (
+    <div className="w-max m-auto pb-3">
+      {/* <ConnectButton showBalance={false} chainStatus="icon" /> */}
+      <ConnectButton.Custom>
+        {({
+          account,
+          chain,
+          openAccountModal, // <-- Add this
+          openChainModal, // <-- Add this
+          openConnectModal,
+          mounted,
+        }) => {
+          const ready = mounted;
+          const connected = ready && account && chain;
+
+          return (
+            <div
+              {...(!ready && {
+                "aria-hidden": true,
+                style: {
+                  opacity: 0,
+                  pointerEvents: "none",
+                  userSelect: "none",
+                },
+              })}
+            >
+              {(() => {
+                // 1. User is not connected
+                if (!connected) {
+                  return (
+                    <Button
+                      onClick={openConnectModal}
+                      // This is your custom styling, uncommented and applied!
+                      className="px-4 py-2 rounded-lg font-medium text-white
+                 bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
+                   hover:opacity-90 transition shadow-md"
+                    >
+                      Connect Wallet
+                    </Button>
+                  );
+                }
+
+                // 2. User is on the wrong network
+                if (chain.unsupported) {
+                  return (
+                    <Button
+                      onClick={openChainModal}
+                      variant="destructive" // Or use your own custom error classes
+                      className="px-4 py-2 rounded-lg font-medium"
+                    >
+                      Wrong network
+                    </Button>
+                  );
+                }
+
+                // 3. User is connected and on the right network
+                return (
+                  <button
+                    onClick={openAccountModal} // <-- Use openAccountModal here
+                    className="px-4 py-2 rounded-lg font-medium text-white
+                 bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
+                  shadow-md hover:opacity-90 transition"
+                  >
+                    {account.displayName}
+                    {account.displayBalance
+                      ? ` (${account.displayBalance})`
+                      : ""}
+                  </button>
+                );
+              })()}
+            </div>
+          );
+        }}
+      </ConnectButton.Custom>
+    </div>
+  );
 }
+
+// "bg-gradient-to-r from-[#10b981] to-[#06b6d4] text-white hover:shadow-lg hover:shadow-emerald-500/50 transition-all duration-200 font-semibold"

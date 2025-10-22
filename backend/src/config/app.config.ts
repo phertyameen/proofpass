@@ -8,4 +8,6 @@ export default registerAs('appConfig', () => ({
     smtpUsername: process.env.SMTP_USERNAME,
     smtpPassword: process.env.SMTP_PASSWORD,
     mailSecure: process.env.MAIL_SECURE === 'true',
+    secret: process.env.JWT_SECRET || 'thisisjustsomedummymeaninglesssecret',
+    expire: process.env.JWT_EXPIRY
 }))

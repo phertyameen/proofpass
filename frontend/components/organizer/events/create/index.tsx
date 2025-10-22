@@ -20,12 +20,18 @@ import {
   DollarSign,
   ImageIcon,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
+// import { useToast } from "@/components/ui/use-toast"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEventContract } from "@/lib/hooks/useEventContract";
+import { toast } from "sonner";
 
 export default function CreateEventView() {
   const router = useRouter();
+  const { createEvent, isConnected, connectWallet } = useEventContract();
+  // const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -41,12 +47,40 @@ export default function CreateEventView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isConnected) {
+      toast.error("Wallet not connected. Please connect your wallet to create an event.");
+      return;
+    }
+
     setIsCreating(true);
 
-    // Simulate blockchain transaction
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const metadata = {
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        startDate: formData.startDate,
+        startTime: formData.startTime,
+        endDate: formData.endDate,
+        endTime: formData.endTime,
+      };
 
-    router.push("/dashboard/organizer/events");
+      const result = await createEvent(
+        metadata,
+        formData.attendanceFee,
+        parseInt(formData.maxAttendees)
+      );
+
+      toast.success(`Event created successfully! Event ID: ${result.eventId}`);
+
+      router.push("/dashboard/organizer/events");
+    } catch (error: any) {
+      console.error("Error creating event:", error);
+      toast.error(error.message || "An error occurred while creating the event.");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleChange = (
@@ -57,6 +91,28 @@ export default function CreateEventView() {
       [e.target.name]: e.target.value,
     }));
   };
+
+  if (!isConnected) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 mt-8">
+          <p className="text-muted-foreground">
+            Connect your wallet to create an event
+          </p>
+          <Button
+            onClick={connectWallet}
+            className="gradient-emerald-teal text-white hover:opacity-90"
+          >
+            Connect Wallet
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -298,7 +354,14 @@ export default function CreateEventView() {
               className="gradient-emerald-teal text-white hover:opacity-90"
               disabled={isCreating}
             >
-              {isCreating ? "Creating Event..." : "Create Event"}
+              {isCreating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating Event...
+                </>
+              ) : (
+                "Create Event"
+              )}
             </Button>
           </div>
         </div>

@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import EventRegistryABI from "@/lib/api/EventRegistryABI.json";
-import { string } from "zod";
+// import { string } from "zod";
 
 const CONTRACT_ADDRESS =
   process.env.EVENT_REGISTRY_ADDRESS ||
@@ -32,6 +33,21 @@ export interface EventMetadata {
   endTime: string;
   latitude?: number;
   longitude?: number;
+  // eventId: number;
+  // organizer: string;
+  // metadataHash: string;
+  // createdAt: number;
+  // attendanceFee: string;
+  // isActive: boolean;
+  // maxAttendees: number;
+  // currentAttendees: number;
+  // title: string;
+  // description: string;
+  // location: string;
+  // startDate: string;
+  // startTime: string;
+  // endDate: string;
+  // endTime: string;
 }
 
 export const useEventContract = () => {

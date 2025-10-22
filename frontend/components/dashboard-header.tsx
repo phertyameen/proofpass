@@ -31,14 +31,14 @@ export function DashboardHeader({ role }: { role: "organizer" | "attendee" }) {
   const attendeeNavigation = [
     { name: "Dashboard", href: "/dashboard/attendee", icon: LayoutDashboard },
     {
-      name: "Discover Events",
-      href: "/dashboard/attendee/events",
-      icon: Search,
-    },
-    {
       name: "My Attendance",
       href: "/dashboard/attendee/my-attendance",
       icon: CheckCircle2,
+    },
+    {
+      name: "Discover Events",
+      href: "/events",
+      icon: Search,
     },
   ];
 

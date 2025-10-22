@@ -82,7 +82,7 @@ export default function EventDetailPage({
     if (typeof window === "undefined") return;
     if (!qrCodeRef.current) return;
 
-    const checkInUrl = `${window.location.origin}/check-in/${event.id}`;
+    const checkInUrl = `${window.location.origin}/dasboard/organizer/events/${event.id}`;
 
     if (!qrCode.current) {
       qrCode.current = new QRCodeStyling({

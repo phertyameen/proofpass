@@ -26,7 +26,7 @@ import { useEventContract } from "@/lib/hooks/useEventContract";
 import { toast } from "sonner";
 
 interface EventWithMetadata {
-  eventId: number;
+  eventId: string;
   organizer: string;
   metadataHash: string;
   createdAt: number;

@@ -22,7 +22,7 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import { useAccount, useSignMessage, useDisconnect } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
-const API_URL = "http://localhost:4000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function ConnectWalletButton() {
   const [isConnected, setIsConnected] = useState(false);

@@ -19,166 +19,63 @@ import {
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { sdk } from "@farcaster/miniapp-sdk";
-import { useAccount, useSignMessage, useDisconnect } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
 export function ConnectWalletButton() {
-  const [isConnected, setIsConnected] = useState(false);
-  const [identifier, setIdentifier] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<
     "organizer" | "attendee" | null
   >(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isBaseApp, setIsBaseApp] = useState(false);
+  const [fid, setFid] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
   // Wagmi hooks for browser wallet
-  const { address, isConnected: isWalletConnected } = useAccount();
-  const { signMessageAsync } = useSignMessage();
+  const { address, isConnected } = useAccount();
   const { disconnect: disconnectWallet } = useDisconnect();
 
-  // Check for existing auth on mount
+  // Determine current role based on pathname
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    const storedId =
-      localStorage.getItem("fid") || localStorage.getItem("walletAddress");
-
-    if (token && storedId) {
-      setIdentifier(storedId);
-      setIsConnected(true);
-    }
-
     if (pathname.includes("/dashboard/organizer")) {
       setCurrentRole("organizer");
     } else if (pathname.includes("/dashboard/attendee")) {
       setCurrentRole("attendee");
+    } else {
+      setCurrentRole(null);
     }
   }, [pathname]);
 
-  // Auto-authenticate when wallet connects (for browser mode)
-  useEffect(() => {
-    if (isWalletConnected && address && !isConnected) {
-      authenticateWithWallet(address);
-    }
-  }, [isWalletConnected, address, isConnected]);
-
-  // Show RainbowKit ConnectButton for browser, or custom button for Base app
+  // Check if in Base app environment and get FID
   useEffect(() => {
     sdk.context
       .then((ctx) => {
-        if (ctx?.user?.fid) setIsBaseApp(true);
+        if (ctx?.user?.fid) {
+          setIsBaseApp(true);
+          setFid(ctx.user.fid.toString());
+          localStorage.setItem("fid", ctx.user.fid.toString());
+        }
       })
       .catch(() => setIsBaseApp(false));
   }, []);
 
-  // Authenticate with browser wallet using wagmi
-  const authenticateWithWallet = async (walletAddress: string) => {
-    try {
-      setIsLoading(true);
-
-      // Step 1: Get nonce
-      const nonceResponse = await fetch(`${API_URL}/auth/nonce`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress }),
-      });
-
-      if (!nonceResponse.ok) throw new Error("Failed to get nonce");
-
-      const { nonce } = await nonceResponse.json();
-
-      // Step 2: Sign message
-      const message = `Sign this message to authenticate with ProofPass.\n\nWallet: ${walletAddress}\nNonce: ${nonce}`;
-      const signature = await signMessageAsync({ message });
-
-      // Step 3: Verify
-      const verifyResponse = await fetch(`${API_URL}/auth/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress, signature, nonce }),
-      });
-
-      if (!verifyResponse.ok) throw new Error("Failed to verify signature");
-
-      const { accessToken } = await verifyResponse.json();
-
-      localStorage.setItem("authToken", accessToken);
-      localStorage.setItem("walletAddress", walletAddress);
-      setIdentifier(walletAddress);
-      setIsConnected(true);
-      router.push("/select-role");
-    } catch (error) {
-      console.error("Wallet authentication error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Authenticate with Farcaster (for Base app)
-  const authenticateWithFarcaster = async () => {
-    try {
-      setIsLoading(true);
-
-      if (!sdk.context) {
-        throw new Error("Not in Base app environment");
+  // Auto-redirect to role selection when wallet connects
+  useEffect(() => {
+    if (isConnected && address && !currentRole) {
+      // Store wallet address
+      localStorage.setItem("walletAddress", address);
+      // Only redirect if not already on a dashboard page
+      if (!pathname.includes("/dashboard") && !pathname.includes("/select-role")) {
+        router.push("/select-role");
       }
-
-      const context = await sdk.context;
-      const userFid = context.user.fid;
-
-      if (!userFid) throw new Error("No user found");
-
-      // Step 1: Get nonce
-      const nonceResponse = await fetch(`${API_URL}/auth/nonce`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fid: userFid.toString() }),
-      });
-
-      if (!nonceResponse.ok) throw new Error("Failed to get nonce");
-
-      const { nonce } = await nonceResponse.json();
-
-      // Step 2: Sign in with Farcaster
-      const signInResult = await sdk.actions.signIn({ nonce });
-
-      // Step 3: Verify
-      const verifyResponse = await fetch(`${API_URL}/auth/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fid: userFid.toString(),
-          signature: signInResult.signature,
-          nonce,
-        }),
-      });
-
-      if (!verifyResponse.ok) throw new Error("Failed to verify signature");
-
-      const { accessToken } = await verifyResponse.json();
-
-      localStorage.setItem("authToken", accessToken);
-      localStorage.setItem("fid", userFid.toString());
-      setIdentifier(userFid.toString());
-      setIsConnected(true);
-      router.push("/select-role");
-    } catch (error) {
-      console.error("Farcaster authentication error:", error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [isConnected, address, currentRole, pathname, router]);
 
   const handleDisconnect = () => {
-    localStorage.removeItem("authToken");
     localStorage.removeItem("fid");
     localStorage.removeItem("walletAddress");
-    setIsConnected(false);
-    setIdentifier(null);
     setCurrentRole(null);
+    setFid(null);
     disconnectWallet();
     router.push("/");
   };
@@ -191,30 +88,36 @@ export function ConnectWalletButton() {
     }
   };
 
-  const handleConnect = async () => {
-    // Check if in Base app environment
+  const handleFarcasterConnect = async () => {
     try {
       const context = await sdk.context;
       if (context?.user?.fid) {
-        await authenticateWithFarcaster();
+        setFid(context.user.fid.toString());
+        localStorage.setItem("fid", context.user.fid.toString());
+        router.push("/select-role");
       }
-    } catch {
-      // Not in Base app, RainbowKit will handle the connection
-      // and useEffect will trigger authentication
+    } catch (error) {
+      console.error("Farcaster connection error:", error);
     }
   };
 
-  if (isConnected && identifier) {
-    const displayText = identifier.startsWith("0x")
-      ? `${identifier.slice(0, 6)}...${identifier.slice(-4)}`
-      : `FID: ${identifier}`;
+  // Get display identifier
+  const getIdentifier = () => {
+    if (fid) return `FID: ${fid}`;
+    if (address) return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    return null;
+  };
 
+  const identifier = getIdentifier();
+
+  // If connected (either via wallet or Farcaster), show user menu
+  if ((isConnected && address) || fid) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button className="gradient-emerald-teal text-white hover:opacity-90 transition-opacity">
             <User className="w-4 h-4 mr-2" />
-            {displayText}
+            {identifier}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -262,28 +165,28 @@ export function ConnectWalletButton() {
     );
   }
 
+  // If in Base app, show Farcaster connect button
   if (isBaseApp) {
     return (
       <Button
-        onClick={handleConnect}
-        disabled={isLoading}
+        onClick={handleFarcasterConnect}
         className="gradient-emerald-teal text-white hover:opacity-90 transition-opacity"
       >
         <Wallet className="w-4 h-4 mr-2" />
-        {isLoading ? "Connecting..." : "Connect with Farcaster"}
+        Connect with Farcaster
       </Button>
     );
   }
-  //   <ConnectButton  />;
+
+  // Default: Show RainbowKit connect button
   return (
     <div className="w-max m-auto pb-3">
-      {/* <ConnectButton showBalance={false} chainStatus="icon" /> */}
       <ConnectButton.Custom>
         {({
           account,
           chain,
-          openAccountModal, // <-- Add this
-          openChainModal, // <-- Add this
+          openAccountModal,
+          openChainModal,
           openConnectModal,
           mounted,
         }) => {
@@ -307,10 +210,9 @@ export function ConnectWalletButton() {
                   return (
                     <Button
                       onClick={openConnectModal}
-                      // This is your custom styling, uncommented and applied!
                       className="px-4 py-2 rounded-lg font-medium text-white
-                 bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
-                   hover:opacity-90 transition shadow-md"
+                        bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
+                        hover:opacity-90 transition shadow-md"
                     >
                       Connect Wallet
                     </Button>
@@ -322,7 +224,7 @@ export function ConnectWalletButton() {
                   return (
                     <Button
                       onClick={openChainModal}
-                      variant="destructive" // Or use your own custom error classes
+                      variant="destructive"
                       className="px-4 py-2 rounded-lg font-medium"
                     >
                       Wrong network
@@ -333,10 +235,10 @@ export function ConnectWalletButton() {
                 // 3. User is connected and on the right network
                 return (
                   <button
-                    onClick={openAccountModal} // <-- Use openAccountModal here
+                    onClick={openAccountModal}
                     className="px-4 py-2 rounded-lg font-medium text-white
-                 bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
-                  shadow-md hover:opacity-90 transition"
+                      bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
+                      shadow-md hover:opacity-90 transition"
                   >
                     {account.displayName}
                     {account.displayBalance
@@ -352,5 +254,3 @@ export function ConnectWalletButton() {
     </div>
   );
 }
-
-// "bg-gradient-to-r from-[#10b981] to-[#06b6d4] text-white hover:shadow-lg hover:shadow-emerald-500/50 transition-all duration-200 font-semibold"

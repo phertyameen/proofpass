@@ -74,9 +74,9 @@ export default function EventsView() {
       const eventData = await getAllEventsWithMetadata();
       console.log("Events loaded:", eventData);
       setEvents(eventData || []);
-      
+
       if (eventData && eventData.length > 0) {
-        toast(`Events loaded. Found ${eventData.length} event(s)`)
+        toast(`Events loaded. Found ${eventData.length} event(s)`);
       }
     } catch (error: any) {
       console.error("Error loading events:", error);
@@ -133,10 +133,10 @@ export default function EventsView() {
   return (
     <div className="space-y-8">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4 md:gap-0">
+        <div className="m-auto w-screen">
           <h1 className="text-4xl font-bold text-balance">Events</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="w-max text-muted-foreground mt-2">
             Manage all your events in one place
           </p>
           {account && (
@@ -145,7 +145,7 @@ export default function EventsView() {
             </p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="w-screen m-auto flex items-center md:justify-end gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -238,9 +238,32 @@ export default function EventsView() {
                       <CardTitle className="text-balance">
                         {event.title}
                       </CardTitle>
-                      <Badge variant={event.isActive ? "default" : "secondary"}>
-                        {event.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                      {(() => {
+                        const now = new Date();
+                        const start = new Date(
+                          `${event.startDate}T${event.startTime}`
+                        );
+                        const end = new Date(
+                          `${event.endDate}T${event.endTime}`
+                        );
+
+                        let status = "";
+                        let variant: "default" | "secondary" | "outline" =
+                          "default";
+
+                        if (now < start) {
+                          status = "Upcoming";
+                          variant = "outline";
+                        } else if (now >= start && now <= end) {
+                          status = "Active";
+                          variant = "default";
+                        } else {
+                          status = "Past";
+                          variant = "secondary";
+                        }
+
+                        return <Badge variant={variant}>{status}</Badge>;
+                      })()}
                     </div>
                     <CardDescription className="line-clamp-2">
                       {event.description}

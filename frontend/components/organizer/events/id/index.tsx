@@ -40,7 +40,6 @@ import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useEventContract } from "@/lib/hooks/useEventContract";
 import { toast } from "sonner";
-import QRCodeStyling from "qr-code-styling";
 import QRCode from "@/components/qrCode";
 
 const MapContainer = dynamic(
@@ -104,32 +103,8 @@ export default function EventDetailView({
     }
   }, [isConnected, params.id]);
 
-  // Initialize QR Code
-  //   useEffect(() => {
-  //     if (typeof window === "undefined") return;
-  //     if (!event?.eventId || !qrCodeRef.current) return;
-
-  //     const checkInUrl = `${window.location.origin}/dasboard/organizer/events/${event.eventId}`;
-
-  //     if (!qrCode.current) {
-  //       qrCode.current = new QRCodeStyling({
-  //         width: 256,
-  //         height: 256,
-  //         data: checkInUrl,
-  //         dotsOptions: { color: "#10b981", type: "rounded" },
-  //         backgroundOptions: { color: "#ffffff" },
-  //         cornersSquareOptions: { type: "extra-rounded" },
-  //         cornersDotOptions: { type: "dot" },
-  //       });
-  //       qrCode.current.append(qrCodeRef.current);
-  //     } else {
-  //       qrCode.current.update({ data: checkInUrl });
-  //     }
-  //   }, [event?.eventId]);
-
   useEffect(() => {
     if (typeof window !== "undefined" && event?.eventId) {
-      // This URL should point to the attendee check-in page, not organizer dashboard
       const url = `${window.location.origin}/dashboard/attendee/check-in/${event.eventId}`;
       setCheckInUrl(url);
     }
@@ -212,16 +187,84 @@ export default function EventDetailView({
     window.URL.revokeObjectURL(url);
   };
 
-  const handleDownloadQR = () => {
+  const handleDownloadQR = async () => {
     if (!checkInUrl) return;
 
-    // Create a temporary canvas to capture the QR code
-    const qrElement = document.querySelector("[data-qr-code]");
-    if (!qrElement) return;
+    try {
+      // Create a temporary canvas to draw the QR code
+      const canvas = document.createElement("canvas");
+      const size = 512; // Higher resolution
+      const padding = 32;
 
-    // Use html2canvas or similar library in production
-    // For now, just show a toast
-    toast.info("QR Code download - implement with html2canvas or similar");
+      canvas.width = size + padding * 2;
+      canvas.height = size + padding * 2;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
+
+      // Draw white background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw border
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 8;
+      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+      // Import QRCode library dynamically and generate QR
+      const QRCodeLib = await import("qrcode");
+
+      // Draw QR code centered with padding
+      await QRCodeLib.toCanvas(canvas, checkInUrl, {
+        errorCorrectionLevel: "H",
+        margin: 1,
+        width: size,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+
+      // The QRCode library draws on the canvas, but we need to add padding
+      // So let's use a different approach - draw to temporary canvas first
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = size;
+      tempCanvas.height = size;
+
+      await QRCodeLib.toCanvas(tempCanvas, checkInUrl, {
+        errorCorrectionLevel: "H",
+        margin: 1,
+        width: size,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+
+      // Now draw the QR code onto the main canvas with padding
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 8;
+      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+      ctx.drawImage(tempCanvas, padding, padding, size, size);
+
+      // Download
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `${
+        event?.title?.replace(/\s+/g, "-") || "event"
+      }-qrcode.png`;
+      link.click();
+
+      toast.success("QR code downloaded successfully!");
+    } catch (error) {
+      console.error("QR download error:", error);
+      toast.error("Failed to download QR code");
+    }
   };
 
   const handleCopyLink = () => {

@@ -73,7 +73,7 @@ export default function CreateEventView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isConnected) {
+    if (!isConnected && !fid) {
       toast.error(
         "Wallet not connected. Please connect your wallet to create an event."
       );

@@ -94,8 +94,8 @@ export const useEventContract = () => {
             }
           }
         } catch (error) {
-          toast("Error connecting Farcaster wallet:");
           console.log("Error connecting Farcaster wallet:", error)
+          toast("Error connecting Farcaster wallet:");
         }
       }
 

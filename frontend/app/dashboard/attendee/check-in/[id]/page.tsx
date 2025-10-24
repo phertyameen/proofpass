@@ -10,8 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Calendar,
-  MapPin,
   Users,
   DollarSign,
   CheckCircle,
@@ -33,6 +31,7 @@ import {
 import { formatEther } from "viem";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 const ATTENDANCE_VERIFIER_ADDRESS = process.env
   .NEXT_PUBLIC_ATTENDANCE_VERIFIER_ADDRESS as `0x${string}`;
@@ -90,6 +89,29 @@ export default function CheckInPage({ params }: { params: { id: string } }) {
   const { address, isConnected } = useAccount();
   const [checkedIn, setCheckedIn] = useState(false);
   const [eventMetadata, setEventMetadata] = useState<any>(null);
+  const [fid, setFid] = useState<string | null>(null);
+  const [farcasterWallet, setFarcasterWallet] = useState<string | null>(null);
+
+  // Check for Farcaster FID and wallet
+  useEffect(() => {
+    const storedFid = localStorage.getItem("fid");
+    const storedWallet = localStorage.getItem("farcasterWallet");
+
+    if (storedFid) setFid(storedFid);
+    if (storedWallet) setFarcasterWallet(storedWallet);
+
+    sdk.context
+      .then((ctx) => {
+        if (ctx?.user?.fid) {
+          const fidString = ctx.user.fid.toString();
+          setFid(fidString);
+          localStorage.setItem("fid", fidString);
+        }
+      })
+      .catch(() => {
+        // Not in Farcaster app
+      });
+  }, []);
 
   // Get event from blockchain
   const { data: eventData, isLoading: eventLoading } = useReadContract({
@@ -372,7 +394,7 @@ export default function CheckInPage({ params }: { params: { id: string } }) {
 
             {/* Check-in Section */}
             <div className="border-t pt-6">
-              {!isConnected || !address ? (
+              {!isConnected && !farcasterWallet ? (
                 <div className="text-center space-y-4">
                   <Wallet className="w-16 h-16 mx-auto text-primary" />
                   <div>
@@ -393,11 +415,23 @@ export default function CheckInPage({ params }: { params: { id: string } }) {
                     <p className="text-sm font-medium text-muted-foreground mb-1">
                       Connected Wallet
                     </p>
+                    {fid && (
+                      <p className="text-xs text-primary mb-1">
+                        Farcaster FID: {fid}
+                      </p>
+                    )}
                     <p className="text-sm font-mono w-full block sm:hidden">
-                      {`${address.slice(0, 6)}...${address.slice(-4)}`}
+                      {address
+                        ? `${address.slice(0, 6)}...${address.slice(-4)}`
+                        : farcasterWallet
+                        ? `${farcasterWallet.slice(
+                            0,
+                            6
+                          )}...${farcasterWallet.slice(-4)}`
+                        : "Not connected"}
                     </p>
                     <p className="text-sm font-mono w-full hidden sm:block">
-                      {address}
+                      {address || farcasterWallet || "Not connected"}
                     </p>
                   </div>
 

@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import EventRegistryABI from "@/lib/api/EventRegistryABI.json";
+import { toast } from "sonner";
+import { any, unknown } from "zod";
 // import { string } from "zod";
 
 const CONTRACT_ADDRESS =
@@ -62,22 +64,39 @@ export const useEventContract = () => {
     const init = async () => {
       // Check for Farcaster wallet first
       const farcasterWallet = localStorage.getItem("farcasterWallet");
+      const fid = localStorage.getItem("fid");
 
-      if (farcasterWallet && !window.ethereum) {
-        // User has Farcaster wallet but no browser wallet
-        setAccount(farcasterWallet);
-        setIsConnected(true);
-        // Note: Contract will be read-only for Farcaster users without wallet
-        const readOnlyProvider = new ethers.JsonRpcProvider(
-          "https://mainnet.base.org"
-        );
-        const eventContract = new ethers.Contract(
-          CONTRACT_ADDRESS,
-          EventRegistryABI.abi,
-          readOnlyProvider
-        );
-        setContract(eventContract);
-        return;
+      if (farcasterWallet && fid) {
+        // User has Farcaster wallet - connect to it
+        try {
+          if (window.ethereum) {
+            const web3Provider = new ethers.BrowserProvider(window.ethereum);
+
+            // Request to connect to the Farcaster wallet address
+            await web3Provider.send("eth_requestAccounts", []);
+            const web3Signer = await web3Provider.getSigner();
+            const signerAddress = await web3Signer.getAddress();
+
+            // Verify it matches the Farcaster wallet
+            if (signerAddress.toLowerCase() === farcasterWallet.toLowerCase()) {
+              setProvider(web3Provider);
+              setSigner(web3Signer);
+              setAccount(farcasterWallet);
+              setIsConnected(true);
+
+              const eventContract = new ethers.Contract(
+                CONTRACT_ADDRESS,
+                EventRegistryABI.abi,
+                web3Signer
+              );
+              setContract(eventContract);
+              return;
+            }
+          }
+        } catch (error) {
+          toast("Error connecting Farcaster wallet:");
+          console.log("Error connecting Farcaster wallet:", error)
+        }
       }
 
       if (typeof window !== "undefined" && window.ethereum) {
@@ -182,7 +201,11 @@ export const useEventContract = () => {
     attendanceFee: string,
     maxAttendees: number
   ) => {
-    if (!contract || !signer) throw new Error("Contract not initialized");
+    if (!contract) throw new Error("Contract not initialized");
+    if (!signer)
+      throw new Error(
+        "Browser wallet required to create events. Please connect your wallet."
+      );
 
     try {
       // Upload metadata to IPFS

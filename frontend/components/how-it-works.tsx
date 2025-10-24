@@ -33,16 +33,16 @@ export function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30"
+      className="py-12 md:py-24 px-4 sm:px-6 lg:px-8 bg-muted/30"
     >
       <div className="container mx-auto max-w-7xl">
         {/* Section Header */}
         <div className="text-center space-y-4 mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
             How <span className="text-gradient-emerald-teal">ProofPass</span>{" "}
             Works
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
+          <p className="text-l md:text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
             Four simple steps to transform your event management
           </p>
         </div>

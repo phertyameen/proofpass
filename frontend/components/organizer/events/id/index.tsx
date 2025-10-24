@@ -317,9 +317,9 @@ export default function EventDetailView({
       </Button>
 
       {/* Event Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col-reverse gap-1 items-start sm:flex-row sm:items-center justify-between">
         <div className="space-y-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-start md:justify-between gap-3">
             <h1 className="text-4xl font-bold text-balance">{event.title}</h1>
             <Badge
               variant={event.isActive && !isPastEvent ? "default" : "secondary"}
@@ -492,7 +492,14 @@ export default function EventDetailView({
                   <p className="text-sm font-medium text-muted-foreground">
                     Organizer
                   </p>
-                  <p className="text-sm font-mono">{event.organizer}</p>
+                  <p className="text-sm font-mono w-full block sm:hidden">
+                    {`${event.organizer.slice(0, 6)}...${event.organizer.slice(
+                      -4
+                    )}`}
+                  </p>
+                  <p className="text-sm font-mono w-full hidden sm:block">
+                    {event.organizer}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
@@ -542,7 +549,7 @@ export default function EventDetailView({
         <TabsContent value="attendees" className="space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1 sm:flex-row items-start sm:items-center justify-between">
                 <div>
                   <CardTitle>Attendee List</CardTitle>
                   <CardDescription>
@@ -617,7 +624,7 @@ export default function EventDetailView({
                   <Loader2 className="w-8 h-8 animate-spin" />
                 </div>
               )}
-              <div className="flex gap-3">
+              <div className="flex flex-col-reverse sm:flex-row gap-3">
                 <Button
                   className="gradient-emerald-teal text-white hover:opacity-90"
                   onClick={handleDownloadQR}

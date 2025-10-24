@@ -47,15 +47,15 @@ export function Features() {
   ];
 
   return (
-    <section id="features" className="py-24 px-4 sm:px-6 lg:px-8">
+    <section id="features" className="py-12 md:py-24 px-4 sm:px-6 lg:px-8">
       <div className="container mx-auto max-w-7xl">
         {/* Section Header */}
         <div className="text-center space-y-4 mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">
+          <h2 className="text-3xl sm:text-5xl font-bold tracking-tight">
             Everything You Need to{" "}
             <span className="text-gradient-emerald-teal">Succeed</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
+          <p className="text-l md:text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
             Built for event organizers, loved by attendees, trusted by
             investors.
           </p>

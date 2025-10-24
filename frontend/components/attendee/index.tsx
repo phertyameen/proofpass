@@ -20,6 +20,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 const ATTENDANCE_VERIFIER_ADDRESS = process.env
   .NEXT_PUBLIC_ATTENDANCE_VERIFIER_ADDRESS as `0x${string}`;
@@ -78,15 +79,41 @@ export default function AttendeeDashboardView() {
   const { address } = useAccount();
   const [attendedEvents, setAttendedEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fid, setFid] = useState<string | null>(null);
+  const [farcasterWallet, setFarcasterWallet] = useState<string | null>(null);
+
+  // Check for Farcaster FID and wallet
+  useEffect(() => {
+    const storedFid = localStorage.getItem("fid");
+    const storedWallet = localStorage.getItem("farcasterWallet");
+
+    if (storedFid) setFid(storedFid);
+    if (storedWallet) setFarcasterWallet(storedWallet);
+
+    sdk.context
+      .then((ctx) => {
+        if (ctx?.user?.fid) {
+          const fidString = ctx.user.fid.toString();
+          setFid(fidString);
+          localStorage.setItem("fid", fidString);
+        }
+      })
+      .catch(() => {
+        // Not in Farcaster app
+      });
+  }, []);
 
   // Get attendee history
   const { data: eventIds } = useReadContract({
     address: ATTENDANCE_VERIFIER_ADDRESS,
     abi: ATTENDANCE_ABI,
     functionName: "getAttendeeHistory",
-    args: address ? [address] : undefined,
+    args:
+      address || farcasterWallet
+        ? [(address || farcasterWallet) as `0x${string}`]
+        : undefined,
     query: {
-      enabled: !!address,
+      enabled: !!(address || farcasterWallet),
     },
   });
 
@@ -112,7 +139,7 @@ export default function AttendeeDashboardView() {
 
             // Fetch attendance data
             const attendanceResponse = await fetch(
-              `/api/attendance/${eventId}/${address}`
+              `/api/attendance/${eventId}/${address || farcasterWallet}`
             );
             const attendance = await attendanceResponse.json();
 
@@ -136,7 +163,7 @@ export default function AttendeeDashboardView() {
     };
 
     fetchEventDetails();
-  }, [eventIds, address]);
+  }, [eventIds, address, farcasterWallet]);
 
   // Calculate stats
   const thisMonthEvents = attendedEvents.filter((e: any) => {

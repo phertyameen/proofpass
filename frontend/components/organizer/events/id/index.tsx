@@ -41,6 +41,7 @@ import dynamic from "next/dynamic";
 import { useEventContract } from "@/lib/hooks/useEventContract";
 import { toast } from "sonner";
 import QRCode from "@/components/qrCode";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 const MapContainer = dynamic(
   () => import("react-leaflet").then((mod) => mod.MapContainer),
@@ -95,20 +96,42 @@ export default function EventDetailView({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [checkInUrl, setCheckInUrl] = useState<string>("");
+  const [fid, setFid] = useState<string | null>(null);
 
   // Load event data
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected || fid) {
       loadEventData();
     }
-  }, [isConnected, params.id]);
+  }, [isConnected, fid, params.id]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && event?.eventId) {
+      // const url = `/dashboard/attendee/check-in/${event.eventId}`;
       const url = `${window.location.origin}/dashboard/attendee/check-in/${event.eventId}`;
       setCheckInUrl(url);
     }
   }, [event?.eventId]);
+
+  // Check for Farcaster FID
+  useEffect(() => {
+    const storedFid = localStorage.getItem("fid");
+    if (storedFid) {
+      setFid(storedFid);
+    }
+
+    sdk.context
+      .then((ctx) => {
+        if (ctx?.user?.fid) {
+          const fidString = ctx.user.fid.toString();
+          setFid(fidString);
+          localStorage.setItem("fid", fidString);
+        }
+      })
+      .catch(() => {
+        // Not in Farcaster app
+      });
+  }, []);
 
   const loadEventData = async () => {
     try {

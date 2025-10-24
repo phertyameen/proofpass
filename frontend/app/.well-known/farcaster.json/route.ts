@@ -1,5 +1,7 @@
 export async function GET() {
-  const URL: any = process.env.NEXT_PUBLIC_URL || "https://proofpass-pi.vercel.app/";
+  const URL =
+    (process.env.NEXT_PUBLIC_URL as string) ||
+    "https://proofpass-pi.vercel.app/";
 
   const manifest = {
     accountAssociation: {
@@ -11,7 +13,7 @@ export async function GET() {
     },
 
     baseBuilder: {
-      allowedAddresses: ["0x8e4EF324F09A58bd2EB67124927A168Cc964294a"],
+      allowedAddresses: [""],
     },
     miniapp: {
       version: "1",

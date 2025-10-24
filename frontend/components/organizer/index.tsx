@@ -25,6 +25,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useEventContract } from "@/lib/hooks/useEventContract";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { getWalletFromFID } from "@/lib/api/getWalletFromFID";
+import FrameSDK from "@farcaster/frame-sdk";
 
 interface EventWithMetadata {
   eventId: string;
@@ -45,6 +48,9 @@ interface EventWithMetadata {
 }
 
 export default function EventsView() {
+  const router = useRouter();
+  const [fid, setFid] = useState<string | null>(null);
+  const [walletFromFid, setWalletFromFid] = useState<string | null>(null);
   const { getAllEventsWithMetadata, isConnected, connectWallet, account } =
     useEventContract();
   const [events, setEvents] = useState<EventWithMetadata[]>([]);
@@ -53,14 +59,88 @@ export default function EventsView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "past">("all");
 
+  // Detect if we're inside Farcaster frame
   useEffect(() => {
-    if (isConnected && account) {
-      console.log("Connected with account:", account);
-      loadEvents();
-    } else {
-      setLoading(false);
+  const detectFid = async () => {
+    try {
+      const ctx = await FrameSDK.context;
+
+      if (ctx?.user?.fid) {
+        console.log("Farcaster context detected:", ctx.user.fid);
+        setFid(ctx.user.fid.toString());
+      } else {
+        console.log("No Farcaster user detected.");
+      }
+    } catch (error) {
+      console.error("Not in Farcaster frame or SDK error:", error);
     }
-  }, [isConnected, account]);
+  };
+
+  detectFid();
+}, []);
+
+  // Resolve FID to wallet address via Neynar
+  useEffect(() => {
+    if (!fid) return;
+    const resolveWallet = async () => {
+      const wallet = await getWalletFromFID(fid);
+      if (wallet) {
+        setWalletFromFid(wallet);
+        localStorage.setItem("farcasterWallet", wallet);
+        toast.success("Farcaster wallet detected");
+      } else {
+        toast.warning("No wallet linked to this Farcaster account");
+      }
+    };
+    resolveWallet();
+  }, [fid]);
+
+   // Fetch events (based on wallet)
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        setLoading(true);
+        const activeWallet = walletFromFid || account;
+        if (!activeWallet) {
+          console.log("No wallet connected — skipping event fetch");
+          setLoading(false);
+          return;
+        }
+
+        const eventsList = await getAllEventsWithMetadata();
+        setEvents(eventsList);
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        toast.error("Failed to load events");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, [walletFromFid, account]);
+
+  // 4️⃣ UI handling
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[400px]">
+        <Loader2 className="animate-spin w-8 h-8 text-gray-500" />
+      </div>
+    );
+  }
+
+  if (!walletFromFid && !isConnected) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[400px] space-y-4">
+        <p className="text-gray-500 text-center">Connect your wallet to view events</p>
+        <Button onClick={connectWallet}>Connect Wallet</Button>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return <p className="text-center text-gray-500">No events found.</p>;
+  }
 
   const loadEvents = async () => {
     if (!isConnected) {
@@ -94,36 +174,40 @@ export default function EventsView() {
   };
 
   const filteredEvents = events.filter((event) => {
-  const matchesSearch =
-    event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    event.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const now = new Date();
-  const start = new Date(event.startDate + 'T' + event.startTime);
-  const end = new Date(event.endDate + 'T' + event.endTime);
+    const now = new Date();
+    const start = new Date(event.startDate + "T" + event.startTime);
+    const end = new Date(event.endDate + "T" + event.endTime);
 
-  if (filter === "active") {
-    return matchesSearch && event.isActive && now >= start && now <= end;
-  } else if (filter === "past") {
-    return matchesSearch && now > end;
-  }
+    if (filter === "active") {
+      return matchesSearch && event.isActive && now >= start && now <= end;
+    } else if (filter === "past") {
+      return matchesSearch && now > end;
+    }
 
-  return matchesSearch;
-});
+    return matchesSearch;
+  });
 
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <p className="text-muted-foreground">
-          Connect your wallet to view events
+          {fid
+            ? "Fetching your Farcaster-linked wallet..."
+            : "Connect your wallet to view events"}
         </p>
-        <Button
-          onClick={connectWallet}
-          className="gradient-emerald-teal text-white hover:opacity-90"
-        >
-          Connect Wallet
-        </Button>
+        {!fid && (
+          <Button
+            onClick={connectWallet}
+            className="gradient-emerald-teal text-white hover:opacity-90"
+          >
+            Connect Wallet
+          </Button>
+        )}
       </div>
     );
   }

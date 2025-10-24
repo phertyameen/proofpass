@@ -23,16 +23,15 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react";
-// import { useToast } from "@/components/ui/use-toast"
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useEventContract } from "@/lib/hooks/useEventContract";
+import { sdk } from "@farcaster/miniapp-sdk";
 import { toast } from "sonner";
 
 export default function CreateEventView() {
   const router = useRouter();
   const { createEvent, isConnected, connectWallet } = useEventContract();
-  // const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -45,12 +44,39 @@ export default function CreateEventView() {
     maxAttendees: "",
     attendanceFee: "0",
   });
+  const [fid, setFid] = useState<string | null>(null);
+  const [isBaseApp, setIsBaseApp] = useState(false);
+
+  useEffect(() => {
+    const storedFid = localStorage.getItem("fid");
+    if (storedFid) {
+      setFid(storedFid);
+      setIsBaseApp(true);
+    }
+
+    sdk.context
+      .then((ctx) => {
+        if (ctx?.user?.fid) {
+          const fidString = ctx.user.fid.toString();
+          setIsBaseApp(true);
+          setFid(fidString);
+          localStorage.setItem("fid", fidString);
+        }
+      })
+      .catch(() => {
+        if (!storedFid) {
+          setIsBaseApp(false);
+        }
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isConnected) {
-      toast.error("Wallet not connected. Please connect your wallet to create an event.");
+      toast.error(
+        "Wallet not connected. Please connect your wallet to create an event."
+      );
       return;
     }
 
@@ -78,7 +104,9 @@ export default function CreateEventView() {
       router.push("/dashboard/organizer/events");
     } catch (error: any) {
       console.error("Error creating event:", error);
-      toast.error(error.message || "An error occurred while creating the event.");
+      toast.error(
+        error.message || "An error occurred while creating the event."
+      );
     } finally {
       setIsCreating(false);
     }
@@ -93,7 +121,7 @@ export default function CreateEventView() {
     }));
   };
 
-  if (!isConnected) {
+  if (!isConnected && !fid) {
     return (
       <div className="max-w-4xl mx-auto">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>

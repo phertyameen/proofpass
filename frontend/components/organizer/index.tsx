@@ -48,7 +48,6 @@ interface EventWithMetadata {
 }
 
 export default function EventsView() {
-  const router = useRouter();
   const [fid, setFid] = useState<string | null>(null);
   const [walletFromFid, setWalletFromFid] = useState<string | null>(null);
   const { getAllEventsWithMetadata, isConnected, connectWallet, account } =
@@ -61,23 +60,23 @@ export default function EventsView() {
 
   // Detect if we're inside Farcaster frame
   useEffect(() => {
-  const detectFid = async () => {
-    try {
-      const ctx = await FrameSDK.context;
+    const detectFid = async () => {
+      try {
+        const ctx = await FrameSDK.context;
 
-      if (ctx?.user?.fid) {
-        console.log("Farcaster context detected:", ctx.user.fid);
-        setFid(ctx.user.fid.toString());
-      } else {
-        console.log("No Farcaster user detected.");
+        if (ctx?.user?.fid) {
+          console.log("Farcaster context detected:", ctx.user.fid);
+          setFid(ctx.user.fid.toString());
+        } else {
+          console.log("No Farcaster user detected.");
+        }
+      } catch (error) {
+        console.error("Not in Farcaster frame or SDK error:", error);
       }
-    } catch (error) {
-      console.error("Not in Farcaster frame or SDK error:", error);
-    }
-  };
+    };
 
-  detectFid();
-}, []);
+    detectFid();
+  }, []);
 
   // Resolve FID to wallet address via Neynar
   useEffect(() => {
@@ -95,7 +94,7 @@ export default function EventsView() {
     resolveWallet();
   }, [fid]);
 
-   // Fetch events (based on wallet)
+  // Fetch events (based on wallet)
   useEffect(() => {
     const loadEvents = async () => {
       try {
@@ -110,7 +109,6 @@ export default function EventsView() {
         const eventsList = await getAllEventsWithMetadata();
         setEvents(eventsList);
       } catch (err) {
-        console.error("Error fetching events:", err);
         toast.error("Failed to load events");
       } finally {
         setLoading(false);
@@ -120,7 +118,7 @@ export default function EventsView() {
     loadEvents();
   }, [walletFromFid, account]);
 
-  // 4️⃣ UI handling
+  // UI handling
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[400px]">
@@ -132,14 +130,26 @@ export default function EventsView() {
   if (!walletFromFid && !isConnected) {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] space-y-4">
-        <p className="text-gray-500 text-center">Connect your wallet to view events</p>
+        <p className="text-gray-500 text-center">
+          Connect your wallet to view events
+        </p>
         <Button onClick={connectWallet}>Connect Wallet</Button>
       </div>
     );
   }
 
   if (events.length === 0) {
-    return <p className="text-center text-gray-500">No events found.</p>;
+    return (
+      <div className="w-screen m-auto flex items-center md:justify-end gap-2">
+        <p className="text-center text-gray-500">No events found.</p>
+        <Link href="/dashboard/organizer/events/create">
+          <Button className="gradient-emerald-teal text-white hover:opacity-90">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Event
+          </Button>
+        </Link>
+      </div>
+    );
   }
 
   const loadEvents = async () => {

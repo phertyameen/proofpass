@@ -60,6 +60,26 @@ export const useEventContract = () => {
   // Initialize provider and contract
   useEffect(() => {
     const init = async () => {
+      // Check for Farcaster wallet first
+      const farcasterWallet = localStorage.getItem("farcasterWallet");
+
+      if (farcasterWallet && !window.ethereum) {
+        // User has Farcaster wallet but no browser wallet
+        setAccount(farcasterWallet);
+        setIsConnected(true);
+        // Note: Contract will be read-only for Farcaster users without wallet
+        const readOnlyProvider = new ethers.JsonRpcProvider(
+          "https://mainnet.base.org"
+        );
+        const eventContract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          EventRegistryABI.abi,
+          readOnlyProvider
+        );
+        setContract(eventContract);
+        return;
+      }
+
       if (typeof window !== "undefined" && window.ethereum) {
         const web3Provider = new ethers.BrowserProvider(window.ethereum);
         setProvider(web3Provider);
@@ -290,15 +310,17 @@ export const useEventContract = () => {
   };
 
   // Get all events with metadata
-  const getAllEventsWithMetadata = async () => {
-    if (!contract || !account) {
+  const getAllEventsWithMetadata = async (organizerAddress?: string) => {
+    const targetAddress = organizerAddress || account;
+
+    if (!contract || !targetAddress) {
       console.error("Contract or account not available");
       throw new Error("Contract not initialized");
     }
 
     try {
-      console.log("Fetching events for account:", account);
-      const eventIds = await getOrganizerEvents(account);
+      console.log("Fetching events for account:", targetAddress);
+      const eventIds = await getOrganizerEvents(targetAddress);
       console.log("Event IDs:", eventIds);
 
       if (eventIds.length === 0) {

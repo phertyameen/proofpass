@@ -21,6 +21,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { useAccount, useDisconnect } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { getWalletFromFID } from "@/lib/api/getWalletFromFID";
 
 export function ConnectWalletButton() {
   const [currentRole, setCurrentRole] = useState<
@@ -72,6 +73,50 @@ export function ConnectWalletButton() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    async function fetchWallet() {
+      if (!fid) return;
+
+      // Check if we already have a wallet stored
+      const storedWallet = localStorage.getItem("walletAddress");
+      if (storedWallet) return;
+
+      // Fetch from Neynar
+      const wallet = await getWalletFromFID(fid);
+      if (wallet) {
+        localStorage.setItem("walletAddress", wallet);
+        console.log("Fetched wallet from FID:", wallet);
+      } else {
+        console.warn("No verified wallet found for this FID");
+      }
+    }
+
+    fetchWallet();
+  }, [fid]);
+
+  useEffect(() => {
+    async function fetchWallet() {
+      if (!fid) return;
+
+      // ✅ Only fetch if no wallet is connected via browser
+      if (isConnected && address) {
+        console.log("Browser wallet already connected, skipping FID fetch");
+        return;
+      }
+
+      const storedWallet = localStorage.getItem("farcasterWallet");
+      if (storedWallet) return;
+
+      const wallet = await getWalletFromFID(fid);
+      if (wallet) {
+        localStorage.setItem("farcasterWallet", wallet); // Use different key
+        console.log("Fetched wallet from FID:", wallet);
+      }
+    }
+
+    fetchWallet();
+  }, [fid, isConnected, address]);
 
   // Auto-redirect to role selection when wallet connects
   useEffect(() => {

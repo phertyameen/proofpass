@@ -18,14 +18,14 @@ export function Hero() {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-balance">
+          <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold tracking-tight text-balance">
             Blockchain-Powered Event{" "}
             <span className="text-gradient-emerald-teal">Attendance</span>{" "}
             Verification
           </h1>
 
           {/* Tagline */}
-          <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto text-balance">
+          <p className="text-l sm:text-xl text-muted-foreground max-w-3xl mx-auto text-balance">
             Where <span className="text-primary font-semibold">Proof</span>{" "}
             Meets <span className="text-[#fbbf24] font-semibold">Profit</span>.
             Transform your events with verifiable attendance, seamless

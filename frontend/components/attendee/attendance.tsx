@@ -19,15 +19,29 @@ import {
 import { mockAttendance } from "@/lib/mock-data";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function MyAttendancePage() {
-  const [isConnected] = useState(true);
-  const [mockAddress] = useState("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb");
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
-  if (!isConnected) {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedAddress = localStorage.getItem("walletAddress");
+      if (storedAddress) {
+        setWalletAddress(storedAddress);
+        setIsConnected(true);
+      }
+    }
+  }, []);
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  if (!isConnected || !walletAddress) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="max-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
             <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mb-4">
@@ -38,7 +52,7 @@ export default function MyAttendancePage() {
               Connect your wallet to view your attendance history
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex justify-center items-center">
             <ConnectWalletButton />
           </CardContent>
         </Card>
@@ -48,19 +62,11 @@ export default function MyAttendancePage() {
 
   return (
     <div className="min-h-screen bg-background">
-
       <div className="container mx-auto px-4 pt-8 space-y-8">
-        {/* <Link href="/dashboard/attendee">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </Link> */}
-
         {/* Page Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex-col md:flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-balance">My Attendance</h1>
+            <h1 className="text-2xl lg:text-4xl font-bold text-balance">My Attendance</h1>
             <p className="text-muted-foreground mt-2">
               Your verified event attendance history
             </p>
@@ -79,8 +85,12 @@ export default function MyAttendancePage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Connected Wallet
                 </p>
+                {/* Show shortened address on mobile, full on larger screens */}
                 <p className="font-mono text-lg font-bold mt-1">
-                  {mockAddress}
+                  <span className="block sm:hidden">
+                    {formatAddress(walletAddress)}
+                  </span>
+                  <span className="hidden sm:block">{walletAddress}</span>
                 </p>
               </div>
               <Badge className="gradient-emerald-teal text-white">

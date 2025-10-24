@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { Suspense } from "react";
 import { MiniAppProvider } from "@/components/miniapp-provider";
-import { WalletProvider } from "@/providers/wallet-provider";
+import WalletProvider  from "@/providers/wallet-provider";
 import { AuthProvider } from "./contexts/AuthContext";
 import { Toaster } from "sonner";
 

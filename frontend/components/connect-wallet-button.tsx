@@ -48,15 +48,29 @@ export function ConnectWalletButton() {
 
   // Check if in Base app environment and get FID
   useEffect(() => {
+    // Check localStorage first
+    const storedFid = localStorage.getItem("fid");
+    if (storedFid) {
+      setFid(storedFid);
+      setIsBaseApp(true);
+    }
+
+    // Then check SDK
     sdk.context
       .then((ctx) => {
         if (ctx?.user?.fid) {
+          const fidString = ctx.user.fid.toString();
           setIsBaseApp(true);
-          setFid(ctx.user.fid.toString());
-          localStorage.setItem("fid", ctx.user.fid.toString());
+          setFid(fidString);
+          localStorage.setItem("fid", fidString);
         }
       })
-      .catch(() => setIsBaseApp(false));
+      .catch(() => {
+        // Not in Base app, check if we have stored FID
+        if (!storedFid) {
+          setIsBaseApp(false);
+        }
+      });
   }, []);
 
   // Auto-redirect to role selection when wallet connects
@@ -65,7 +79,10 @@ export function ConnectWalletButton() {
       // Store wallet address
       localStorage.setItem("walletAddress", address);
       // Only redirect if not already on a dashboard page
-      if (!pathname.includes("/dashboard") && !pathname.includes("/select-role")) {
+      if (
+        !pathname.includes("/dashboard") &&
+        !pathname.includes("/select-role")
+      ) {
         router.push("/select-role");
       }
     }
@@ -85,19 +102,6 @@ export function ConnectWalletButton() {
       router.push("/dashboard/attendee");
     } else {
       router.push("/dashboard/organizer");
-    }
-  };
-
-  const handleFarcasterConnect = async () => {
-    try {
-      const context = await sdk.context;
-      if (context?.user?.fid) {
-        setFid(context.user.fid.toString());
-        localStorage.setItem("fid", context.user.fid.toString());
-        router.push("/select-role");
-      }
-    } catch (error) {
-      console.error("Farcaster connection error:", error);
     }
   };
 
@@ -165,92 +169,80 @@ export function ConnectWalletButton() {
     );
   }
 
-  // If in Base app, show Farcaster connect button
-  if (isBaseApp) {
-    return (
-      <Button
-        onClick={handleFarcasterConnect}
-        className="gradient-emerald-teal text-white hover:opacity-90 transition-opacity"
-      >
-        <Wallet className="w-4 h-4 mr-2" />
-        Connect with Farcaster
-      </Button>
-    );
+  // For Base app users who haven't connected yet - this shouldn't normally show
+  // because FID is auto-detected, but keep as fallback
+  if (isBaseApp && !fid) {
+    return null; // Don't show anything, FID should be auto-detected
   }
 
-  // Default: Show RainbowKit connect button
+  // Default: Show RainbowKit connect button for regular browser users
   return (
-    <div className="w-max m-auto pb-3">
-      <ConnectButton.Custom>
-        {({
-          account,
-          chain,
-          openAccountModal,
-          openChainModal,
-          openConnectModal,
-          mounted,
-        }) => {
-          const ready = mounted;
-          const connected = ready && account && chain;
+    <ConnectButton.Custom>
+      {({
+        account,
+        chain,
+        openAccountModal,
+        openChainModal,
+        openConnectModal,
+        mounted,
+      }) => {
+        const ready = mounted;
+        const connected = ready && account && chain;
 
-          return (
-            <div
-              {...(!ready && {
-                "aria-hidden": true,
-                style: {
-                  opacity: 0,
-                  pointerEvents: "none",
-                  userSelect: "none",
-                },
-              })}
-            >
-              {(() => {
-                // 1. User is not connected
-                if (!connected) {
-                  return (
-                    <Button
-                      onClick={openConnectModal}
-                      className="px-4 py-2 rounded-lg font-medium text-white
-                        bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
-                        hover:opacity-90 transition shadow-md"
-                    >
-                      Connect Wallet
-                    </Button>
-                  );
-                }
-
-                // 2. User is on the wrong network
-                if (chain.unsupported) {
-                  return (
-                    <Button
-                      onClick={openChainModal}
-                      variant="destructive"
-                      className="px-4 py-2 rounded-lg font-medium"
-                    >
-                      Wrong network
-                    </Button>
-                  );
-                }
-
-                // 3. User is connected and on the right network
+        return (
+          <div
+            {...(!ready && {
+              "aria-hidden": true,
+              style: {
+                opacity: 0,
+                pointerEvents: "none",
+                userSelect: "none",
+              },
+            })}
+          >
+            {(() => {
+              // 1. User is not connected
+              if (!connected) {
                 return (
-                  <button
-                    onClick={openAccountModal}
-                    className="px-4 py-2 rounded-lg font-medium text-white
-                      bg-gradient-to-r from-[rgb(28,60,138)] via-white/70 to-[#02B7D5]
-                      shadow-md hover:opacity-90 transition"
+                  <Button
+                    onClick={openConnectModal}
+                    className="gradient-emerald-teal text-white hover:opacity-90 transition-opacity"
                   >
-                    {account.displayName}
-                    {account.displayBalance
-                      ? ` (${account.displayBalance})`
-                      : ""}
-                  </button>
+                    <Wallet className="w-4 h-4 mr-2" />
+                    Connect Wallet
+                  </Button>
                 );
-              })()}
-            </div>
-          );
-        }}
-      </ConnectButton.Custom>
-    </div>
+              }
+
+              // 2. User is on the wrong network
+              if (chain.unsupported) {
+                return (
+                  <Button
+                    onClick={openChainModal}
+                    variant="destructive"
+                    className="px-4 py-2 rounded-lg font-medium"
+                  >
+                    Wrong network
+                  </Button>
+                );
+              }
+
+              // 3. User is connected and on the right network
+              // This should be handled by the main conditional above,
+              // but kept for RainbowKit compatibility
+              return (
+                <button
+                  onClick={openAccountModal}
+                  className="px-4 py-2 rounded-lg font-medium text-white gradient-emerald-teal hover:opacity-90 transition shadow-md"
+                >
+                  {account.displayName}
+                  {account.displayBalance ? ` (${account.displayBalance})` : ""}
+                </button>
+              );
+            })()}
+          </div>
+        );
+      }}
+    </ConnectButton.Custom>
   );
 }

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 
 export function CTA() {
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8">
+    <section className="py-12 md:py-24 px-4 sm:px-6 lg:px-8">
       <div className="container mx-auto max-w-4xl">
         <div className="relative overflow-hidden rounded-3xl gradient-emerald-teal p-12 md:p-16 text-center">
           {/* Background Pattern */}

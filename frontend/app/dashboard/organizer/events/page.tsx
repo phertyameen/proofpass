@@ -1,4 +1,4 @@
-import EventsView from '@/components/organizer/events'
+import EventsView from '@/components/organizer'
 import React from 'react'
 
 const page = () => {

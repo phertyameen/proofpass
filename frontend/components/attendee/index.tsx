@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -12,45 +14,153 @@ import {
   TrendingUp,
   Award,
   Search,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { useAccount, useReadContract } from "wagmi";
+
+const ATTENDANCE_VERIFIER_ADDRESS = process.env
+  .NEXT_PUBLIC_ATTENDANCE_VERIFIER_ADDRESS as `0x${string}`;
+
+const ATTENDANCE_ABI = [
+  {
+    inputs: [{ name: "_attendee", type: "address" }],
+    name: "getAttendeeHistory",
+    outputs: [{ name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "_eventId", type: "uint256" },
+      { name: "_attendee", type: "address" },
+    ],
+    name: "attendances",
+    outputs: [
+      { name: "eventId", type: "uint256" },
+      { name: "attendee", type: "address" },
+      { name: "timestamp", type: "uint256" },
+      { name: "verified", type: "bool" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+const EVENT_ABI = [
+  {
+    inputs: [{ name: "_eventId", type: "uint256" }],
+    name: "getEvent",
+    outputs: [
+      {
+        components: [
+          { name: "eventId", type: "uint256" },
+          { name: "organizer", type: "address" },
+          { name: "metadataHash", type: "string" },
+          { name: "createdAt", type: "uint256" },
+          { name: "attendanceFee", type: "uint256" },
+          { name: "isActive", type: "bool" },
+          { name: "maxAttendees", type: "uint256" },
+          { name: "currentAttendees", type: "uint256" },
+        ],
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 export default function AttendeeDashboardView() {
-  // Mock attendee data
-  const attendedEvents = [
-    {
-      id: "1",
-      title: "Web3 Developer Conference 2025",
-      date: new Date("2025-03-15"),
-      location: "Lagos, Nigeria",
-      verified: true,
-      nftMinted: true,
+  const { address } = useAccount();
+  const [attendedEvents, setAttendedEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Get attendee history
+  const { data: eventIds } = useReadContract({
+    address: ATTENDANCE_VERIFIER_ADDRESS,
+    abi: ATTENDANCE_ABI,
+    functionName: "getAttendeeHistory",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
     },
-    {
-      id: "2",
-      title: "NFT Art Gallery Opening",
-      date: new Date("2025-02-20"),
-      location: "Abuja, Nigeria",
-      verified: true,
-      nftMinted: true,
-    },
-    {
-      id: "3",
-      title: "Startup Pitch Night",
-      date: new Date("2025-01-10"),
-      location: "Port Harcourt, Nigeria",
-      verified: true,
-      nftMinted: false,
-    },
-  ];
+  });
+
+  useEffect(() => {
+    const fetchEventDetails = async () => {
+      if (!eventIds || eventIds.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      const events = await Promise.all(
+        (eventIds as bigint[]).map(async (eventId) => {
+          try {
+            // Fetch event data
+            const eventResponse = await fetch(`/api/events/${eventId}`);
+            const eventData = await eventResponse.json();
+
+            // Fetch metadata
+            const metadataResponse = await fetch(
+              `/api/metadata/${eventData.metadataHash}`
+            );
+            const metadata = await metadataResponse.json();
+
+            // Fetch attendance data
+            const attendanceResponse = await fetch(
+              `/api/attendance/${eventId}/${address}`
+            );
+            const attendance = await attendanceResponse.json();
+
+            return {
+              id: eventId.toString(),
+              title: metadata.title,
+              date: new Date(Number(attendance.timestamp) * 1000),
+              location: metadata.location,
+              verified: attendance.verified,
+              nftMinted: true, // You can add NFT minting logic
+            };
+          } catch (error) {
+            console.error(`Error fetching event ${eventId}:`, error);
+            return null;
+          }
+        })
+      );
+
+      setAttendedEvents(events.filter(Boolean));
+      setIsLoading(false);
+    };
+
+    fetchEventDetails();
+  }, [eventIds, address]);
+
+  // Calculate stats
+  const thisMonthEvents = attendedEvents.filter((e: any) => {
+    const now = new Date();
+    return (
+      e.date.getMonth() === now.getMonth() &&
+      e.date.getFullYear() === now.getFullYear()
+    );
+  }).length;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse md:flex-row items-start gap-3 md:gap-0 md:items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-balance">
+          <h1 className="text-3xl md:text-4xl font-bold text-balance">
             Attendee Dashboard
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -125,7 +235,7 @@ export default function AttendeeDashboardView() {
       {/* Recent Attendance */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row items-start sm:items-center justify-between">
             <div>
               <CardTitle>Recent Attendance</CardTitle>
               <CardDescription>Your latest event check-ins</CardDescription>
@@ -142,10 +252,10 @@ export default function AttendeeDashboardView() {
             {attendedEvents.map((event) => (
               <div
                 key={event.id}
-                className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent transition-colors"
+                className="flex flex-col-reverse gap-4 md:gap-0 md:flex-row items-start md:items-center justify-between py-4 px-1 md:px-4 rounded-lg border border-border hover:bg-accent transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
+                <div className="flex items-center sm:gap-4">
+                  <div className="w-6 h-6 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
                     {event.title.charAt(0)}
                   </div>
                   <div>

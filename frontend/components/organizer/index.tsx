@@ -94,25 +94,23 @@ export default function EventsView() {
   };
 
   const filteredEvents = events.filter((event) => {
-    // Search filter
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchQuery.toLowerCase());
+  const matchesSearch =
+    event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Status filter
-    const eventDate = new Date(event.startDate);
-    const now = new Date();
-    const isPast = eventDate < now;
+  const now = new Date();
+  const start = new Date(event.startDate + 'T' + event.startTime);
+  const end = new Date(event.endDate + 'T' + event.endTime);
 
-    if (filter === "active") {
-      return matchesSearch && event.isActive && !isPast;
-    } else if (filter === "past") {
-      return matchesSearch && isPast;
-    }
+  if (filter === "active") {
+    return matchesSearch && event.isActive && now >= start && now <= end;
+  } else if (filter === "past") {
+    return matchesSearch && now > end;
+  }
 
-    return matchesSearch;
-  });
+  return matchesSearch;
+});
 
   if (!isConnected) {
     return (
@@ -166,8 +164,8 @@ export default function EventsView() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
+      <div className="w-full flex flex-col sm:flex-row items-center gap-4">
+        <div className="w-full relative flex justify-between">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search events..."
@@ -176,24 +174,26 @@ export default function EventsView() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button
-          variant={filter === "all" ? "default" : "outline"}
-          onClick={() => setFilter("all")}
-        >
-          All Events
-        </Button>
-        <Button
-          variant={filter === "active" ? "default" : "outline"}
-          onClick={() => setFilter("active")}
-        >
-          Active
-        </Button>
-        <Button
-          variant={filter === "past" ? "default" : "outline"}
-          onClick={() => setFilter("past")}
-        >
-          Past
-        </Button>
+        <div className="w-full flex gap-4 md:gap-0 justify-between items-center">
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => setFilter("all")}
+          >
+            All Events
+          </Button>
+          <Button
+            variant={filter === "active" ? "default" : "outline"}
+            onClick={() => setFilter("active")}
+          >
+            Active
+          </Button>
+          <Button
+            variant={filter === "past" ? "default" : "outline"}
+            onClick={() => setFilter("past")}
+          >
+            Past
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -205,7 +205,7 @@ export default function EventsView() {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <p className="text-muted-foreground">
             {events.length === 0
-              ? "No events found. Create your first event!"
+              ? "You don't have any active events. No worries, you can always create now!"
               : "No events match your search criteria"}
           </p>
           <Link href="/dashboard/organizer/events/create">

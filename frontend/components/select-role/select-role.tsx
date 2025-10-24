@@ -35,10 +35,10 @@ export default function SelectRoleView() {
         <div className="max-w-5xl mx-auto space-y-12">
           {/* Header */}
           <div className="text-center space-y-4">
-            <h1 className="text-5xl font-bold text-balance">
+            <h1 className="text-3xl md:text-4xl font-bold text-balance">
               Choose Your Role
             </h1>
-            <p className="text-xl text-muted-foreground text-balance max-w-2xl mx-auto">
+            <p className="text-l md:text-xl text-muted-foreground text-balance max-w-2xl mx-auto">
               Select how you want to use ProofPass. You can switch roles
               anytime.
             </p>
@@ -52,7 +52,7 @@ export default function SelectRoleView() {
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                   <Calendar className="w-10 h-10 text-white" />
                 </div>
-                <CardTitle className="text-3xl">Event Organizer</CardTitle>
+                <CardTitle className="text-2xl md:text-3xl">Event Organizer</CardTitle>
                 <CardDescription className="text-base">
                   Create and manage events with blockchain verification
                 </CardDescription>
@@ -105,7 +105,7 @@ export default function SelectRoleView() {
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-secondary to-primary flex items-center justify-center">
                   <Users className="w-10 h-10 text-white" />
                 </div>
-                <CardTitle className="text-3xl">Event Attendee</CardTitle>
+                <CardTitle className="text-2xl md:text-3xl">Event Attendee</CardTitle>
                 <CardDescription className="text-base">
                   Discover and attend events with verified proof of attendance
                 </CardDescription>

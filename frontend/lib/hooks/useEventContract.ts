@@ -67,7 +67,7 @@ export const useEventContract = () => {
       const fid = localStorage.getItem("fid");
 
       if (farcasterWallet && fid) {
-        // User has Farcaster wallet - connect to it
+        // User has Farcaster wallet - try to connect to it
         try {
           if (window.ethereum) {
             const web3Provider = new ethers.BrowserProvider(window.ethereum);
@@ -90,13 +90,17 @@ export const useEventContract = () => {
                 web3Signer
               );
               setContract(eventContract);
+              console.log("Farcaster wallet connected:", farcasterWallet);
               return;
+            } else {
+              console.warn("Signer address doesn't match Farcaster wallet");
             }
           }
         } catch (error) {
-          console.log("Error connecting Farcaster wallet:", error)
-          toast("Error connecting Farcaster wallet:");
+          console.error("Error connecting Farcaster wallet:", error);
+          toast.error("Error connecting Farcaster wallet");
         }
+        // Don't return here - fall through to browser wallet or read-only mode
       }
 
       if (typeof window !== "undefined" && window.ethereum) {

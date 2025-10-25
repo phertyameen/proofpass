@@ -94,8 +94,8 @@ export function ConnectWalletButton() {
         console.log("Fetched wallet from FID:", wallet);
 
         window.dispatchEvent(
-          new CustomEvent("farcasterWalletConnected", {
-            detail: { wallet },
+          new CustomEvent("farcasterWalletReady", {
+            detail: { wallet, fid },
           })
         );
       } else {
@@ -104,7 +104,7 @@ export function ConnectWalletButton() {
     }
 
     fetchWallet();
-  }, [fid]);
+  }, [fid, isConnected, address]);
 
   useEffect(() => {
     async function fetchWallet() {

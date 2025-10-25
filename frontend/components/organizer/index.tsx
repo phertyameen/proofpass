@@ -49,7 +49,7 @@ interface EventWithMetadata {
 export default function EventsView() {
   const [fid, setFid] = useState<string | null>(null);
   const [walletFromFid, setWalletFromFid] = useState<string | null>(null);
-  const { getAllEventsWithMetadata, isConnected, connectWallet, account } =
+  const { getAllEventsWithMetadata, isConnected, connectWallet, account, contract } =
     useEventContract();
   const [events, setEvents] = useState<EventWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,6 +105,14 @@ export default function EventsView() {
           return;
         }
 
+        // await new Promise(resolve => setTimeout(resolve, 1000));
+
+        if (!contract) {
+        console.log("Contract not initialized yet — waiting...");
+        setLoading(false);
+        return;
+      }
+
         const eventsList = await getAllEventsWithMetadata();
         setEvents(eventsList);
       } catch (err) {
@@ -114,8 +122,15 @@ export default function EventsView() {
       }
     };
 
+    if ((walletFromFid || account) && contract) {
     loadEvents();
-  }, [walletFromFid, account]);
+  } else {
+    setLoading(false);
+  }
+
+
+    // loadEvents();
+  }, [walletFromFid, account, contract, getAllEventsWithMetadata]);
 
   // UI handling
   if (loading) {

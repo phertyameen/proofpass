@@ -7,12 +7,12 @@ import { any, unknown } from "zod";
 // import { string } from "zod";
 
 const CONTRACT_ADDRESS =
-  process.env.EVENT_REGISTRY_ADDRESS ||
+  process.env.NEXT_PUBLIC_EVENT_REGISTRY_ADDRESS ||
   "0x716c9b4973a08Cb6340C048e52fdbA6893F2DA25";
 
-// if (!CONTRACT_ADDRESS) {
-//     throw new Error('contract address not found')
-// }
+if (!CONTRACT_ADDRESS) {
+    throw new Error('contract address not found')
+}
 
 export interface EventData {
   eventId: string;
@@ -117,11 +117,12 @@ export const useEventContract = () => {
           console.log("Error connecting Farcaster wallet:", error);
         }
         // If Farcaster wallet exists but couldn't connect, still initialize read-only contract
-        if (farcasterWallet && window.ethereum) {
+        if (window.ethereum) {
+           try {
           const web3Provider = new ethers.BrowserProvider(window.ethereum);
           setProvider(web3Provider);
           setAccount(farcasterWallet);
-
+          
           const readOnlyContract = new ethers.Contract(
             CONTRACT_ADDRESS,
             EventRegistryABI.abi,
@@ -129,8 +130,12 @@ export const useEventContract = () => {
           );
           setContract(readOnlyContract);
           console.log("Farcaster read-only contract initialized");
+          return;
+        } catch (error) {
+          console.error("Error initializing read-only contract:", error);
         }
       }
+    }
 
       if (typeof window !== "undefined" && window.ethereum) {
         const web3Provider = new ethers.BrowserProvider(window.ethereum);
@@ -195,6 +200,40 @@ export const useEventContract = () => {
       }
     };
   }, []);
+
+  // Add this NEW useEffect after the init useEffect
+useEffect(() => {
+  const reinitForFarcaster = async () => {
+    const farcasterWallet = localStorage.getItem("farcasterWallet");
+    
+    if (farcasterWallet && !contract && window.ethereum) {
+      console.log("Re-initializing contract for Farcaster wallet");
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      setProvider(web3Provider);
+      setAccount(farcasterWallet);
+      
+      const readOnlyContract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        EventRegistryABI.abi,
+        web3Provider
+      );
+      setContract(readOnlyContract);
+      console.log("Contract initialized for Farcaster wallet");
+    }
+  };
+
+  // Run immediately
+  reinitForFarcaster();
+
+  // Also check periodically for a few seconds (in case localStorage is set after mount)
+  const interval = setInterval(reinitForFarcaster, 500);
+  const timeout = setTimeout(() => clearInterval(interval), 5000);
+
+  return () => {
+    clearInterval(interval);
+    clearTimeout(timeout);
+  };
+}, [contract]);
 
   // Connect wallet
   const connectWallet = async () => {
@@ -387,10 +426,10 @@ export const useEventContract = () => {
     const farcasterWallet = localStorage.getItem("farcasterWallet");
     const targetAddress = organizerAddress || farcasterWallet || account;
 
-    // if (!contract) {
-    //   console.error("Contract not available");
-    //   throw new Error("Contract not initialized");
-    // }
+    if (!contract) {
+      console.error("Contract not available");
+      throw new Error("Contract not initialized");
+    }
 
     if (!targetAddress) {
       console.error("No wallet address available");

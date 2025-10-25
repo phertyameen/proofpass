@@ -79,7 +79,7 @@ export default function CreateEventView() {
     console.log("Signer state:", signer);
     console.log("isConnected:", isConnected);
 
-    if (contract) {
+    if (!contract) {
       console.log("Contract initialized, setting isInitializing to false");
       setIsInitializing(false);
     } else {
@@ -160,7 +160,7 @@ export default function CreateEventView() {
         parseInt(formData.maxAttendees)
       );
 
-      toast.success(`Event created successfully! Event ID: ${result.eventId}`);
+      if (result) toast.success(`Event created successfully! Event ID: ${result.eventId}`);
 
       router.push("/dashboard/organizer/events");
     } catch (error: any) {

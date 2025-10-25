@@ -152,7 +152,7 @@ export default function EventsView() {
 
   if (events.length === 0) {
     return (
-      <div className="w-screen m-auto flex items-center md:justify-end gap-2">
+      <div className="w-screen m-auto flex flex-col sm:flex-row items-center justify-center gap-4">
         <p className="text-center text-gray-500">No events found.</p>
         <Link href="/dashboard/organizer/events/create">
           <Button className="gradient-emerald-teal text-white hover:opacity-90">

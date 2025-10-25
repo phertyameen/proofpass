@@ -327,35 +327,25 @@ export const useEventContract = () => {
       try {
         console.log("Farcaster wallet detected, requesting connection...");
 
-        if (window.ethereum) {
-          try {
-            const web3Provider = new ethers.BrowserProvider(window.ethereum);
-            setProvider(web3Provider);
-            setAccount(farcasterWallet);
-
-            const readOnlyContract = new ethers.Contract(
-              CONTRACT_ADDRESS,
-              EventRegistryABI.abi,
-              web3Provider
-            );
-            setContract(readOnlyContract);
-            console.log("Farcaster read-only contract initialized");
-            return;
-          } catch (error) {
-            console.error("Error initializing read-only contract:", error);
-          }
+        // Check for wallet provider (Farcaster or MetaMask)
+        const provider = window.ethereum;
+        if (!provider) {
+          throw new Error(
+            "No wallet provider found. Please use a wallet-enabled browser or Farcaster app."
+          );
         }
-        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+
+        const web3Provider = new ethers.BrowserProvider(provider);
 
         // Switch to Base Sepolia
         try {
-          await window.ethereum.request({
+          await provider.request({
             method: "wallet_switchEthereumChain",
             params: [{ chainId: "0x14a34" }],
           });
         } catch (switchError: any) {
           if (switchError.code === 4902) {
-            await window.ethereum.request({
+            await provider.request({
               method: "wallet_addEthereumChain",
               params: [
                 {
@@ -379,11 +369,13 @@ export const useEventContract = () => {
         const web3Signer = await web3Provider.getSigner();
         const signerAddress = await web3Signer.getAddress();
 
-        // Verify it matches the Farcaster wallet
+        // Verify it matches the Farcaster wallet (or allow any wallet for browser users)
         if (signerAddress.toLowerCase() !== farcasterWallet.toLowerCase()) {
-          throw new Error(
-            `Please switch to your Farcaster wallet: ${farcasterWallet}`
+          console.warn(
+            `Connected wallet ${signerAddress} doesn't match Farcaster wallet ${farcasterWallet}`
           );
+          // For Farcaster users, we should use the Farcaster wallet
+          // For browser users without FID, any wallet is fine
         }
 
         // Update contract with signer
@@ -395,6 +387,7 @@ export const useEventContract = () => {
 
         setSigner(web3Signer);
         setContract(contractWithSigner);
+        setAccount(signerAddress);
 
         // Now proceed with the updated contract
         return createEventWithSigner(

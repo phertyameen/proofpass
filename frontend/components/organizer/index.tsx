@@ -25,7 +25,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useEventContract } from "@/lib/hooks/useEventContract";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { getWalletFromFID } from "@/lib/api/getWalletFromFID";
 import FrameSDK from "@farcaster/frame-sdk";
 

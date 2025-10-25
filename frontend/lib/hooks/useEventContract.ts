@@ -59,6 +59,23 @@ export const useEventContract = () => {
   const [account, setAccount] = useState<string>("");
   const [isConnected, setIsConnected] = useState(false);
 
+  useEffect(() => {
+    const handleFarcasterWallet = (event: any) => {
+      const wallet = event.detail.wallet;
+      setAccount(wallet);
+      console.log("Farcaster wallet connected:", wallet);
+    };
+
+    window.addEventListener("farcasterWalletConnected", handleFarcasterWallet);
+
+    return () => {
+      window.removeEventListener(
+        "farcasterWalletConnected",
+        handleFarcasterWallet
+      );
+    };
+  }, []);
+
   // Initialize provider and contract
   useEffect(() => {
     const init = async () => {
@@ -67,7 +84,7 @@ export const useEventContract = () => {
       const fid = localStorage.getItem("fid");
 
       if (farcasterWallet && fid) {
-        // User has Farcaster wallet - try to connect to it
+        // User has Farcaster wallet - connect to it
         try {
           if (window.ethereum) {
             const web3Provider = new ethers.BrowserProvider(window.ethereum);
@@ -83,6 +100,7 @@ export const useEventContract = () => {
               setSigner(web3Signer);
               setAccount(farcasterWallet);
               setIsConnected(true);
+              localStorage.setItem("walletAddress", farcasterWallet);
 
               const eventContract = new ethers.Contract(
                 CONTRACT_ADDRESS,
@@ -90,22 +108,45 @@ export const useEventContract = () => {
                 web3Signer
               );
               setContract(eventContract);
-              console.log("Farcaster wallet connected:", farcasterWallet);
+              console.log("Farcaster contract initialized");
               return;
-            } else {
-              console.warn("Signer address doesn't match Farcaster wallet");
             }
           }
         } catch (error) {
-          console.error("Error connecting Farcaster wallet:", error);
-          toast.error("Error connecting Farcaster wallet");
+          toast("Error connecting Farcaster wallet:");
+          console.log("Error connecting Farcaster wallet:", error);
         }
-        // Don't return here - fall through to browser wallet or read-only mode
+        // If Farcaster wallet exists but couldn't connect, still initialize read-only contract
+        if (farcasterWallet && window.ethereum) {
+          const web3Provider = new ethers.BrowserProvider(window.ethereum);
+          setProvider(web3Provider);
+          setAccount(farcasterWallet);
+
+          const readOnlyContract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            EventRegistryABI.abi,
+            web3Provider
+          );
+          setContract(readOnlyContract);
+          console.log("Farcaster read-only contract initialized");
+        }
       }
 
       if (typeof window !== "undefined" && window.ethereum) {
         const web3Provider = new ethers.BrowserProvider(window.ethereum);
         setProvider(web3Provider);
+
+        // Initialize contract with provider for read-only operations
+        const readOnlyContract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          EventRegistryABI.abi,
+          web3Provider
+        );
+        setContract(readOnlyContract);
+        console.log(
+          "Read-only contract initialized at:",
+          readOnlyContract.target
+        );
 
         try {
           const accounts = await web3Provider.listAccounts();
@@ -115,12 +156,16 @@ export const useEventContract = () => {
             setAccount(accounts[0].address);
             setIsConnected(true);
 
+            // Update contract with signer for write operations
             const eventContract = new ethers.Contract(
               CONTRACT_ADDRESS,
               EventRegistryABI.abi,
               web3Signer
             );
-            console.log("Contract initialized at:", eventContract.target);
+            console.log(
+              "Contract with signer initialized at:",
+              eventContract.target
+            );
             setContract(eventContract);
           }
         } catch (error) {
@@ -206,9 +251,10 @@ export const useEventContract = () => {
     maxAttendees: number
   ) => {
     if (!contract) throw new Error("Contract not initialized");
-    if (!signer)
+    const farcasterWallet = localStorage.getItem("farcasterWallet");
+    if (!signer && !farcasterWallet)
       throw new Error(
-        "Browser wallet required to create events. Please connect your wallet."
+        "Wallet required to create events. Please connect your wallet."
       );
 
     try {
@@ -338,11 +384,17 @@ export const useEventContract = () => {
 
   // Get all events with metadata
   const getAllEventsWithMetadata = async (organizerAddress?: string) => {
-    const targetAddress = organizerAddress || account;
+    const farcasterWallet = localStorage.getItem("farcasterWallet");
+    const targetAddress = organizerAddress || farcasterWallet || account;
 
-    if (!contract || !targetAddress) {
-      console.error("Contract or account not available");
+    if (!contract) {
+      console.error("Contract not available");
       throw new Error("Contract not initialized");
+    }
+
+    if (!targetAddress) {
+      console.error("No wallet address available");
+      throw new Error("No wallet address available");
     }
 
     try {

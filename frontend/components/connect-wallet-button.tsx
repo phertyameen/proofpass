@@ -78,8 +78,13 @@ export function ConnectWalletButton() {
     async function fetchWallet() {
       if (!fid) return;
 
+      if (isConnected && address) {
+        console.log("Browser wallet already connected, skipping FID fetch");
+        return;
+      }
+
       // Check if we already have a wallet stored
-      const storedWallet = localStorage.getItem("walletAddress");
+      const storedWallet = localStorage.getItem("farcasterWallet");
       if (storedWallet) return;
 
       // Fetch from Neynar
@@ -87,6 +92,12 @@ export function ConnectWalletButton() {
       if (wallet) {
         localStorage.setItem("walletAddress", wallet);
         console.log("Fetched wallet from FID:", wallet);
+
+        window.dispatchEvent(
+          new CustomEvent("farcasterWalletConnected", {
+            detail: { wallet },
+          })
+        );
       } else {
         console.warn("No verified wallet found for this FID");
       }

@@ -66,6 +66,11 @@ export const useEventContract = () => {
       const farcasterWallet = localStorage.getItem("farcasterWallet");
       const fid = localStorage.getItem("fid");
 
+      console.log("Farcaster wallet from storage:", farcasterWallet);
+      console.log("FID from storage:", fid);
+      console.log("window.ethereum available:", !!window.ethereum);
+      console.log("Farcaster wallet from storage:", farcasterWallet);
+
       if (farcasterWallet && fid) {
         // User has Farcaster wallet - try to connect to it
         try {
@@ -90,10 +95,15 @@ export const useEventContract = () => {
                 web3Signer
               );
               setContract(eventContract);
-              console.log("Farcaster wallet connected:", farcasterWallet);
+              console.log("✅ Contract initialized:", CONTRACT_ADDRESS);
+              console.log("✅ Contract target:", eventContract.target);
+              console.log("✅ Signer available:", !!web3Signer);
               return;
             } else {
               console.warn("Signer address doesn't match Farcaster wallet");
+              console.warn("❌ Signer address doesn't match!");
+              console.log("Expected:", farcasterWallet);
+              console.log("Got:", signerAddress);
             }
           }
         } catch (error) {

@@ -387,10 +387,10 @@ export const useEventContract = () => {
     const farcasterWallet = localStorage.getItem("farcasterWallet");
     const targetAddress = organizerAddress || farcasterWallet || account;
 
-    if (!contract) {
-      console.error("Contract not available");
-      throw new Error("Contract not initialized");
-    }
+    // if (!contract) {
+    //   console.error("Contract not available");
+    //   throw new Error("Contract not initialized");
+    // }
 
     if (!targetAddress) {
       console.error("No wallet address available");

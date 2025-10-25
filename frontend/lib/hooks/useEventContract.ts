@@ -3,8 +3,6 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import EventRegistryABI from "@/lib/api/EventRegistryABI.json";
 import { toast } from "sonner";
-import { any, unknown } from "zod";
-// import { string } from "zod";
 
 const CONTRACT_ADDRESS =
   process.env.NEXT_PUBLIC_EVENT_REGISTRY_ADDRESS ||
@@ -329,12 +327,24 @@ export const useEventContract = () => {
       try {
         console.log("Farcaster wallet detected, requesting connection...");
 
-        if (!window.ethereum) {
-          throw new Error(
-            "Please install MetaMask or another Web3 wallet to create events"
-          );
-        }
+        if (window.ethereum) {
+          try {
+            const web3Provider = new ethers.BrowserProvider(window.ethereum);
+            setProvider(web3Provider);
+            setAccount(farcasterWallet);
 
+            const readOnlyContract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              EventRegistryABI.abi,
+              web3Provider
+            );
+            setContract(readOnlyContract);
+            console.log("Farcaster read-only contract initialized");
+            return;
+          } catch (error) {
+            console.error("Error initializing read-only contract:", error);
+          }
+        }
         const web3Provider = new ethers.BrowserProvider(window.ethereum);
 
         // Switch to Base Sepolia

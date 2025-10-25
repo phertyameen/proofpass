@@ -11,7 +11,7 @@ const CONTRACT_ADDRESS =
   "0x716c9b4973a08Cb6340C048e52fdbA6893F2DA25";
 
 if (!CONTRACT_ADDRESS) {
-    throw new Error('contract address not found')
+  throw new Error("contract address not found");
 }
 
 export interface EventData {
@@ -118,24 +118,24 @@ export const useEventContract = () => {
         }
         // If Farcaster wallet exists but couldn't connect, still initialize read-only contract
         if (window.ethereum) {
-           try {
-          const web3Provider = new ethers.BrowserProvider(window.ethereum);
-          setProvider(web3Provider);
-          setAccount(farcasterWallet);
-          
-          const readOnlyContract = new ethers.Contract(
-            CONTRACT_ADDRESS,
-            EventRegistryABI.abi,
-            web3Provider
-          );
-          setContract(readOnlyContract);
-          console.log("Farcaster read-only contract initialized");
-          return;
-        } catch (error) {
-          console.error("Error initializing read-only contract:", error);
+          try {
+            const web3Provider = new ethers.BrowserProvider(window.ethereum);
+            setProvider(web3Provider);
+            setAccount(farcasterWallet);
+
+            const readOnlyContract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              EventRegistryABI.abi,
+              web3Provider
+            );
+            setContract(readOnlyContract);
+            console.log("Farcaster read-only contract initialized");
+            return;
+          } catch (error) {
+            console.error("Error initializing read-only contract:", error);
+          }
         }
       }
-    }
 
       if (typeof window !== "undefined" && window.ethereum) {
         const web3Provider = new ethers.BrowserProvider(window.ethereum);
@@ -202,38 +202,38 @@ export const useEventContract = () => {
   }, []);
 
   // Add this NEW useEffect after the init useEffect
-useEffect(() => {
-  const reinitForFarcaster = async () => {
-    const farcasterWallet = localStorage.getItem("farcasterWallet");
-    
-    if (farcasterWallet && !contract && window.ethereum) {
-      console.log("Re-initializing contract for Farcaster wallet");
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      setProvider(web3Provider);
-      setAccount(farcasterWallet);
-      
-      const readOnlyContract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        EventRegistryABI.abi,
-        web3Provider
-      );
-      setContract(readOnlyContract);
-      console.log("Contract initialized for Farcaster wallet");
-    }
-  };
+  useEffect(() => {
+    const reinitForFarcaster = async () => {
+      const farcasterWallet = localStorage.getItem("farcasterWallet");
 
-  // Run immediately
-  reinitForFarcaster();
+      if (farcasterWallet && !contract && window.ethereum) {
+        console.log("Re-initializing contract for Farcaster wallet");
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        setProvider(web3Provider);
+        setAccount(farcasterWallet);
 
-  // Also check periodically for a few seconds (in case localStorage is set after mount)
-  const interval = setInterval(reinitForFarcaster, 500);
-  const timeout = setTimeout(() => clearInterval(interval), 5000);
+        const readOnlyContract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          EventRegistryABI.abi,
+          web3Provider
+        );
+        setContract(readOnlyContract);
+        console.log("Contract initialized for Farcaster wallet");
+      }
+    };
 
-  return () => {
-    clearInterval(interval);
-    clearTimeout(timeout);
-  };
-}, [contract]);
+    // Run immediately
+    reinitForFarcaster();
+
+    // Also check periodically for a few seconds (in case localStorage is set after mount)
+    const interval = setInterval(reinitForFarcaster, 500);
+    const timeout = setTimeout(() => clearInterval(interval), 5000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [contract]);
 
   // Connect wallet
   const connectWallet = async () => {
@@ -290,24 +290,120 @@ useEffect(() => {
     maxAttendees: number
   ) => {
     if (!contract) throw new Error("Contract not initialized");
+
     const farcasterWallet = localStorage.getItem("farcasterWallet");
-    if (!signer && !farcasterWallet)
+
+    // If we have a Farcaster wallet but no signer, try to connect
+    if (farcasterWallet && !signer) {
+      try {
+        console.log("Farcaster wallet detected, requesting connection...");
+
+        if (!window.ethereum) {
+          throw new Error(
+            "Please install MetaMask or another Web3 wallet to create events"
+          );
+        }
+
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+
+        // Switch to Base Sepolia
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x14a34" }],
+          });
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x14a34",
+                  chainName: "Base Sepolia",
+                  rpcUrls: ["https://sepolia.base.org"],
+                  nativeCurrency: {
+                    name: "Ethereum",
+                    symbol: "ETH",
+                    decimals: 18,
+                  },
+                  blockExplorerUrls: ["https://sepolia.basescan.org"],
+                },
+              ],
+            });
+          }
+        }
+
+        // Request account access
+        await web3Provider.send("eth_requestAccounts", []);
+        const web3Signer = await web3Provider.getSigner();
+        const signerAddress = await web3Signer.getAddress();
+
+        // Verify it matches the Farcaster wallet
+        if (signerAddress.toLowerCase() !== farcasterWallet.toLowerCase()) {
+          throw new Error(
+            `Please switch to your Farcaster wallet: ${farcasterWallet}`
+          );
+        }
+
+        // Update contract with signer
+        const contractWithSigner = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          EventRegistryABI.abi,
+          web3Signer
+        );
+
+        setSigner(web3Signer);
+        setContract(contractWithSigner);
+
+        // Now proceed with the updated contract
+        return createEventWithSigner(
+          contractWithSigner,
+          metadata,
+          attendanceFee,
+          maxAttendees
+        );
+      } catch (error) {
+        console.error("Error connecting wallet:", error);
+        throw new Error(
+          "Please connect your wallet to create events. " +
+            (error as Error).message
+        );
+      }
+    }
+
+    if (!signer) {
       throw new Error(
         "Wallet required to create events. Please connect your wallet."
       );
+    }
 
+    return createEventWithSigner(
+      contract,
+      metadata,
+      attendanceFee,
+      maxAttendees
+    );
+  };
+
+  // Helper function to actually create the event
+  const createEventWithSigner = async (
+    contractInstance: ethers.Contract,
+    metadata: EventMetadata,
+    attendanceFee: string,
+    maxAttendees: number
+  ) => {
     try {
       // Upload metadata to IPFS
       const metadataHash = await uploadToIPFS(metadata);
 
       // Get creation fee
-      const creationFee = await contract.eventCreationFee();
+      const creationFee = await contractInstance.eventCreationFee();
 
       // Convert attendance fee to wei
       const attendanceFeeWei = ethers.parseEther(attendanceFee);
 
       // Create event
-      const tx = await contract.createEvent(
+      const tx = await contractInstance.createEvent(
         metadataHash,
         attendanceFeeWei,
         maxAttendees,
@@ -328,7 +424,7 @@ useEffect(() => {
       throw error;
     }
   };
-
+  
   // Get event details
   const getEvent = async (eventId: string): Promise<EventData> => {
     if (!contract) throw new Error("Contract not initialized");

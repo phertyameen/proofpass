@@ -31,7 +31,8 @@ import { toast } from "sonner";
 
 export default function CreateEventView() {
   const router = useRouter();
-  const { createEvent, isConnected, connectWallet } = useEventContract();
+  const { createEvent, isConnected, connectWallet, account, contract, signer } =
+    useEventContract();
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -44,6 +45,7 @@ export default function CreateEventView() {
     maxAttendees: "",
     attendanceFee: "0",
   });
+  const [isInitializing, setIsInitializing] = useState(true);
   const [fid, setFid] = useState<string | null>(null);
   const [isBaseApp, setIsBaseApp] = useState(false);
 
@@ -70,23 +72,28 @@ export default function CreateEventView() {
       });
   }, []);
 
+  // Wait for contract to initialize
+  useEffect(() => {
+    if (contract) {
+      setIsInitializing(false);
+    }
+  }, [contract]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isConnected && !fid) {
+    const farcasterWallet = localStorage.getItem("farcasterWallet");
+
+    if (!isConnected && !fid && !farcasterWallet) {
       toast.error(
         "Wallet not connected. Please connect your wallet to create an event."
       );
       return;
     }
 
-    if ((isConnected || fid) && !createEvent) {
-      return (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="ml-2">Initializing contract...</p>
-        </div>
-      );
+    if (!contract) {
+      toast.error("Contract not initialized. Please wait...");
+      return;
     }
 
     setIsCreating(true);
@@ -101,6 +108,8 @@ export default function CreateEventView() {
         endDate: formData.endDate,
         endTime: formData.endTime,
       };
+
+      toast.info("Please approve the transaction in your wallet...");
 
       const result = await createEvent(
         metadata,
@@ -120,6 +129,16 @@ export default function CreateEventView() {
       setIsCreating(false);
     }
   };
+
+  // Show loading state while contract initializes
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="ml-2">Initializing contract...</p>
+      </div>
+    );
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

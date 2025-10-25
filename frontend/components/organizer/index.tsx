@@ -105,8 +105,6 @@ export default function EventsView() {
           return;
         }
 
-        // await new Promise(resolve => setTimeout(resolve, 1000));
-
         if (!contract) {
         console.log("Contract not initialized yet — waiting...");
         setLoading(false);

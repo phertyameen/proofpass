@@ -114,45 +114,16 @@ export const useEventContract = () => {
       const fid = localStorage.getItem("fid");
 
       if (farcasterWallet && fid) {
-        // User has Farcaster wallet - connect to it
-        try {
-          if (window.ethereum) {
-            const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        console.log("Farcaster wallet detected:", farcasterWallet);
 
-            // Request to connect to the Farcaster wallet address
-            await web3Provider.send("eth_requestAccounts", []);
-            const web3Signer = await web3Provider.getSigner();
-            const signerAddress = await web3Signer.getAddress();
-
-            // Verify it matches the Farcaster wallet
-            if (signerAddress.toLowerCase() === farcasterWallet.toLowerCase()) {
-              setProvider(web3Provider);
-              setSigner(web3Signer);
-              setAccount(farcasterWallet);
-              setIsConnected(true);
-              localStorage.setItem("walletAddress", farcasterWallet);
-
-              const eventContract = new ethers.Contract(
-                CONTRACT_ADDRESS,
-                EventRegistryABI.abi,
-                web3Signer
-              );
-              setContract(eventContract);
-              console.log("Farcaster contract initialized");
-              return;
-            }
-          }
-        } catch (error) {
-          toast("Error connecting Farcaster wallet:");
-          console.log("Error connecting Farcaster wallet:", error);
-        }
-        // If Farcaster wallet exists but couldn't connect, still initialize read-only contract
+        // Always initialize a read-only contract first
         if (window.ethereum) {
           try {
             const web3Provider = new ethers.BrowserProvider(window.ethereum);
             setProvider(web3Provider);
             setAccount(farcasterWallet);
 
+            // Initialize read-only contract immediately
             const readOnlyContract = new ethers.Contract(
               CONTRACT_ADDRESS,
               EventRegistryABI.abi,
@@ -160,9 +131,37 @@ export const useEventContract = () => {
             );
             setContract(readOnlyContract);
             console.log("Farcaster read-only contract initialized");
-            return;
+
+            // Try to get signer if accounts are available
+            try {
+              const accounts = await web3Provider.listAccounts();
+              if (accounts.length > 0) {
+                const web3Signer = await web3Provider.getSigner();
+                const signerAddress = await web3Signer.getAddress();
+
+                if (
+                  signerAddress.toLowerCase() === farcasterWallet.toLowerCase()
+                ) {
+                  setSigner(web3Signer);
+                  setIsConnected(true);
+
+                  // Update contract with signer
+                  const eventContract = new ethers.Contract(
+                    CONTRACT_ADDRESS,
+                    EventRegistryABI.abi,
+                    web3Signer
+                  );
+                  setContract(eventContract);
+                  console.log("Farcaster contract with signer initialized");
+                }
+              }
+            } catch (signerError) {
+              console.log("No signer available yet, read-only contract ready");
+            }
+
+            return; // Exit init after Farcaster setup
           } catch (error) {
-            console.error("Error initializing read-only contract:", error);
+            console.error("Error initializing Farcaster contract:", error);
           }
         }
       }

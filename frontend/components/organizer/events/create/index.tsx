@@ -74,10 +74,53 @@ export default function CreateEventView() {
 
   // Wait for contract to initialize
   useEffect(() => {
+    console.log("Contract state:", contract);
+    console.log("Account state:", account);
+    console.log("Signer state:", signer);
+    console.log("isConnected:", isConnected);
+
     if (contract) {
+      console.log("Contract initialized, setting isInitializing to false");
+      setIsInitializing(false);
+    } else {
+      console.log("Contract not yet initialized");
+    }
+
+    // Add a timeout fallback - if contract doesn't initialize in 10 seconds, show form anyway
+    const timeout = setTimeout(() => {
+      console.log("Timeout reached, forcing initialization to false");
+      setIsInitializing(false);
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [contract, account, signer, isConnected]);
+
+  // Wait for contract to initialize OR Farcaster wallet to be detected
+  useEffect(() => {
+    const farcasterWallet = localStorage.getItem("farcasterWallet");
+
+    console.log("Checking initialization:", {
+      contract: !!contract,
+      account,
+      farcasterWallet,
+      fid,
+      isConnected,
+    });
+
+    // If we have EITHER a contract OR a Farcaster wallet, we can proceed
+    if (contract || farcasterWallet || account) {
+      console.log("Ready to show form");
       setIsInitializing(false);
     }
-  }, [contract]);
+
+    // Fallback timeout
+    const timeout = setTimeout(() => {
+      console.log("Timeout - showing form anyway");
+      setIsInitializing(false);
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [contract, account, fid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -59,6 +59,38 @@ export const useEventContract = () => {
   const [account, setAccount] = useState<string>("");
   const [isConnected, setIsConnected] = useState(false);
 
+  // Add this NEW useEffect to listen for Farcaster wallet ready event
+  useEffect(() => {
+    const handleFarcasterReady = async (event: any) => {
+      const { wallet, fid } = event.detail;
+      console.log("Farcaster wallet ready event received:", wallet);
+
+      if (window.ethereum && !contract) {
+        try {
+          const web3Provider = new ethers.BrowserProvider(window.ethereum);
+          setProvider(web3Provider);
+          setAccount(wallet);
+
+          const readOnlyContract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            EventRegistryABI.abi,
+            web3Provider
+          );
+          setContract(readOnlyContract);
+          console.log("Contract initialized from Farcaster event");
+        } catch (error) {
+          console.error("Error initializing from Farcaster event:", error);
+        }
+      }
+    };
+
+    window.addEventListener("farcasterWalletReady", handleFarcasterReady);
+
+    return () => {
+      window.removeEventListener("farcasterWalletReady", handleFarcasterReady);
+    };
+  }, [contract]);
+
   useEffect(() => {
     const handleFarcasterWallet = (event: any) => {
       const wallet = event.detail.wallet;
@@ -201,7 +233,6 @@ export const useEventContract = () => {
     };
   }, []);
 
-  // Add this NEW useEffect after the init useEffect
   useEffect(() => {
     const reinitForFarcaster = async () => {
       const farcasterWallet = localStorage.getItem("farcasterWallet");
@@ -424,7 +455,7 @@ export const useEventContract = () => {
       throw error;
     }
   };
-  
+
   // Get event details
   const getEvent = async (eventId: string): Promise<EventData> => {
     if (!contract) throw new Error("Contract not initialized");
